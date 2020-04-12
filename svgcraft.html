@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>svgcraft</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/12.0.4/2/twemoji.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.2.0/dist/peerjs.min.js"></script>
+    <script src="./point.js"></script>
+    <script src="./color_picker.js"></script>
+    <script src="./avatar_picker.js"></script>
+    <script src="./json2svg.js"></script>
+    <script src="./svgcraft.js"></script>
+    <script src="./avatar.js"></script>
+    <script src="./app.js"></script>
+    <script src="./server.js"></script>
+    <script src="./client.js"></script>
+    <script src="./solo.js"></script>
+    <script>
+      window.onload = init;
+    </script>
+    <link rel="stylesheet" href="./svgcraft.css"/>
+    <link rel="icon" href="data:,"> <!-- don't make favicon.ico request -->
+  </head>
+
+  <body>
+    <div id="UpperPart">
+      <div id="mapport">
+        <svg id="mainsvg"></svg>
+      </div>
+      <div id="color_picker" class="modal">
+        <canvas id="color_wheel" width="1000" height="1000">
+        </canvas>
+      </div>
+      <div id="avatar_picker" class="modal">
+        <div class="modal_title">
+          Please choose your avatar:
+        </div>
+        <div id="avatar_previews" class="modal_content">
+        </div>
+      </div>
+    </div>
+    <div id="LowerPart">
+      <div id="Tools" class="ToolGroup">
+        <div id="new-rectangle" class="ToolButton">
+          <svg class="tool-svg" viewBox="0 0 30 30">
+            <rect x="5" y="8" width="20" height="14" fill="#E75A70"/>
+          </svg>
+        </div>
+        <div id="new-square" class="ToolButton">
+          <svg class="tool-svg" viewBox="0 0 30 30">
+            <path d="M 5 15 L 15 5 L 25 15 L 15 25 z" fill="#E75A70"/>
+          </svg>
+        </div>
+      </div>
+      <div id="Colors" class="ToolGroup">
+        <!--div id="pick-stroke-color" class="ToolButton">
+        </div-->
+        <div id="pick-fill-color" class="ToolButton">
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

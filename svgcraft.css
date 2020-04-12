@@ -1,0 +1,154 @@
+body {
+    background-color: #555;
+}
+
+#UpperPart {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 50px;
+    right: 0;
+}
+
+#LowerPart {
+    position: fixed;
+    height: 50px;
+    left: 0;
+    bottom: 0;
+    right: 0;
+}
+
+.bsod {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background-color: blue;
+    text-align: center;
+    color: white;
+    font-family: monospace;
+    font-size: 20px;
+}
+
+#mapport {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    bottom: 0px;
+    right: 0px;
+    overflow: hidden;
+    background-color: white;
+}
+
+#mainsvg {
+    position: absolute;
+    /* show elements at negative positions too, we want an infinite space in all directions */
+    overflow: visible;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+}
+
+#ToolGroup {
+    float: left;
+}
+
+.ToolButton {
+    width: 35px;
+    height: 35px;
+    background: no-repeat scroll 0 0 transparent;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-left: 6.5px;
+    margin-top: 6.5px;
+    margin-right: 0px;
+    margin-bottom: 6.5px;
+    float: left;
+}
+
+.ToolButton.ActiveTool {
+    background-color: #ddd;
+}
+
+.tool-svg {
+    width: 35px;
+    height: 35px;
+}
+
+.modal {
+    width: 70%;
+    height: 70%;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin:auto;
+}
+
+.modal_title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50px;
+    top: 0;
+    text-align: center;
+    color: white;
+    font-family: monospace;
+    font-size: 20px;
+    padding: 10px;
+}
+
+.modal_content {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50px;
+    bottom: 0;
+    overflow-y: auto;
+    margin: 5px;
+}
+
+#color_wheel {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#avatar_picker {
+    background-color: #555;
+}
+
+.avatar_preview {
+    width: 60px;
+    height: 60px;
+    float: left;
+    border-radius: 30px;
+    background-size: 71.4%;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin-left: 9px;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 9px;
+    cursor: pointer;
+}
+
+.avatar {
+    animation: move forwards 600ms ease-in-out;
+    offset-rotate: 0deg;
+}
+
+@keyframes move {
+    0% {
+        offset-distance: 0%;
+    }
+    100% {
+        offset-distance: 100%;
+    }
+}
