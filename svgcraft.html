@@ -6,6 +6,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/12.0.4/2/twemoji.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.2.0/dist/peerjs.min.js"></script>
     <script src="./point.js"></script>
+    <script src="./color_conversions.js"></script>
     <script src="./color_picker.js"></script>
     <script src="./avatar_picker.js"></script>
     <script src="./json2svg.js"></script>
@@ -25,11 +26,16 @@
   <body>
     <div id="UpperPart">
       <div id="mapport">
-        <svg id="mainsvg"></svg>
+        <svg id="mainsvg" class="set_corner_handle_cursors_to_move"></svg>
       </div>
       <div id="color_picker" class="modal">
-        <canvas id="color_wheel" width="1000" height="1000">
-        </canvas>
+        <div id="color_picker_inner" class="modal_content">
+        </div>
+        <div class="topright-button" id="close-color-picker">
+          <svg class="tool-svg" viewBox="0 0 30 30">
+            <path d="M 6 6 L 24 24 M 24 6 L 6 24" stroke="#E75A70" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
       </div>
       <div id="avatar_picker" class="modal">
         <div class="modal_title">
@@ -41,9 +47,14 @@
     </div>
     <div id="LowerPart">
       <div id="Tools" class="ToolGroup">
-        <div id="new-rectangle" class="ToolButton">
+        <!--div id="new-rectangle" class="ToolButton">
           <svg class="tool-svg" viewBox="0 0 30 30">
             <rect x="5" y="8" width="20" height="14" fill="#E75A70"/>
+          </svg>
+        </div-->
+        <div id="new-triangle" class="ToolButton">
+          <svg class="tool-svg" viewBox="0 0 30 30">
+            <path d="M 5 23.65 L 15 6.35 L 25 23.65 z" fill="#E75A70"/>
           </svg>
         </div>
         <div id="new-square" class="ToolButton">
@@ -56,6 +67,13 @@
         <!--div id="pick-stroke-color" class="ToolButton">
         </div-->
         <div id="pick-fill-color" class="ToolButton">
+        </div>
+      </div>
+      <div id="BottomRightLinks" class="ToolGroup">
+        <div id="github-link" class="ToolButton">
+          <a href="https://github.com/svgcraft/svgcraft" target="_blank" rel="noreferrer noopener">
+            <img border="0" alt="source code" src="img/github-white.svg" width="35" height="35">
+          </a>
         </div>
       </div>
     </div>

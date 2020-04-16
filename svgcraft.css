@@ -54,7 +54,13 @@ body {
     float: left;
 }
 
+#BottomRightLinks {
+    float: right;
+    margin-right: 6.5px;
+}
+
 .ToolButton {
+    overflow: hidden;
     width: 35px;
     height: 35px;
     background: no-repeat scroll 0 0 transparent;
@@ -76,9 +82,23 @@ body {
     height: 35px;
 }
 
+.topright-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    border: 1px solid #ddd;
+    width: 35px;
+    height: 35px;
+    background: no-repeat scroll 0 0 transparent;
+    border-radius: 5px;
+    margin: 15px;
+}
+
+#github-link {
+    border: none;
+}
+
 .modal {
-    width: 70%;
-    height: 70%;
     position: absolute;
     left: 0;
     right: 0;
@@ -98,6 +118,7 @@ body {
     font-family: monospace;
     font-size: 20px;
     padding: 10px;
+    background-color: #555;
 }
 
 .modal_content {
@@ -107,7 +128,8 @@ body {
     top: 50px;
     bottom: 0;
     overflow-y: auto;
-    margin: 5px;
+    padding: 5px;
+    background-color: #555;
 }
 
 #color_wheel {
@@ -120,8 +142,21 @@ body {
     margin-right: auto;
 }
 
+#color_picker {
+    top: 50px;
+    bottom: 50px;
+    left: 50px;
+    right: 50px;
+}
+
+#color_picker_inner {
+    overflow: unset;
+    top: 0;
+}
+
 #avatar_picker {
-    background-color: #555;
+    width: 70%;
+    height: 70%;
 }
 
 .avatar_preview {
@@ -137,6 +172,17 @@ body {
     margin-right: 0;
     margin-bottom: 9px;
     cursor: pointer;
+}
+
+/* for all elements of class corner-handle with an ancestor of class
+   set_corner_handle_cursors_to_move (this ancestor will be mainsvg),
+   set cursor to "move" */
+.set_corner_handle_cursors_to_move .corner-handle {
+    cursor: move;
+}
+
+.set_corner_handle_cursors_to_none .corner-handle {
+    cursor: none;
 }
 
 .avatar {

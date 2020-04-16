@@ -153,7 +153,7 @@ function equilateral_triangle_from_center(center, corner) {
     const p1 = corner;
     const p2 = center.add(r.rotate(Math.PI*2/3));
     const p3 = center.add(r.rotate(-Math.PI*2/3));
-    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${p3.x} ${p3.y} ${p1.x} ${p1.y}`});
+    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${p3.x} ${p3.y} z`});
 }
 
 function equilateral_triangle(mid, tip) {
@@ -161,14 +161,14 @@ function equilateral_triangle(mid, tip) {
     const l = h.norm() / Math.sqrt(3.0);
     const p1 = mid.add(Point.polar(l, h.angle() + Math.PI/2));
     const p2 = mid.add(Point.polar(l, h.angle() - Math.PI/2));
-    return {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${tip.x} ${tip.y} ${p1.x} ${p1.y}`};
+    return {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`};
 }
 
 function isosceles_triangle(baseMid, baseLength, rotation, height) {
     const tip = baseMid.add(Point.polar(height, rotation));
     const p1 = baseMid.add(Point.polar(baseLength/2, rotation + Math.PI/2));
     const p2 = baseMid.add(Point.polar(baseLength/2, rotation - Math.PI/2));
-    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} ${tip.x} ${tip.y} ${p1.x} ${p1.y}`});
+    return svg("path", {d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`});
 }
 
 function rectangle(origin, corner) {
@@ -329,7 +329,83 @@ function shape_contextmenu(e) {
     app.post(m);
 }
 
+function background_contextmenu(e) {
+    e.preventDefault();
+    if (selectedElemId) {
+        app.post({
+            action: "deselect",
+            who: app.avatarId,
+            what: [selectedElemId]
+        });
+        selectedElemId = null;
+    }
+    const c = I("BackgroundRect").getAttribute("fill");
+    if (!c.startsWith('url')) I("pick-fill-color").style.backgroundColor = c;
+}
+
+function set_corner_handle_cursor(name) {
+    const l = I("mainsvg").classList;
+    for (const c of l) {
+        if (c.startsWith("set_corner_handle_cursors_to_")) {
+            l.remove(c);
+        }
+    }
+    l.add("set_corner_handle_cursors_to_" + name);
+}
+
+var onadjustcorner = null;
+
+var mouseDownPosWithinHandle = null;
+
+var previousState = "default";
+var currentState = "default";
+
+// elem: DOM SVG element being edited
+// cornerPos: original world coordinates of the corner being edited
+// geomUpdater: function which takes a Point with the new corner coordinates
+//              and returns a JSON action to update elem
+function mousedown_corner_handle(elem, cornerPos, geomUpdater) {
+    return (e) => {
+        mouseDownPos = event_to_world_coords(e);
+        mouseDownPosWithinHandle = mouseDownPos.sub(cornerPos);
+        const alpha = mouseDownPosWithinHandle.angle();
+        const avatarOffset = Point.polar(Avatar.pointerRadius, alpha);
+        app.post({
+            action: "upd",
+            id: app.avatarId,
+            pos: mouseDownPos.add(avatarOffset),
+            animate: 'jump'
+        });
+        onadjustcorner = (e) => {
+            const p = event_to_world_coords(e);
+            app.post([{
+                action: "upd",
+                id: app.avatarId,
+                pos: p.add(avatarOffset),
+                pointer: alpha + Math.PI
+            }, geomUpdater(p.sub(mouseDownPosWithinHandle))]);
+        };
+        enter_state("adjust_corner");
+    };
+}
+
+function mousemove_adjust_corner(e) {
+    onadjustcorner(e);
+}
+
+function mouseup_adjust_corner_done(e) {
+    onadjustcorner = null;
+    app.post({
+        action: "upd",
+        id: app.avatarId,
+        pointer: "none"
+    });
+    enter_state(previousState);
+}
+
 function enter_state(name) {
+    previousState = currentState;
+    currentState = name;
     switch (name) {
     case "default":
         I("mapport").onmousedown = mousedown_begin_map_move;
@@ -338,6 +414,7 @@ function enter_state(name) {
         I("mapport").onwheel = wheel_zoom;
         I("avatar-clickable").onmousedown = mousedown_begin_point_at;
         set_cursor("default");
+        set_corner_handle_cursor("move");
         break;
     case "map_move":
         I("mapport").onmousedown = undefined;
@@ -346,6 +423,7 @@ function enter_state(name) {
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
         set_cursor("none");
+        set_corner_handle_cursor("none");
         break;
     case "place_shape":
         I("mapport").onmousedown = mousedown_place_shape_here;
@@ -354,6 +432,7 @@ function enter_state(name) {
         I("mapport").onwheel = wheel_zoom;
         I("avatar-clickable").onmousedown = undefined;
         set_cursor("crosshair");
+        set_corner_handle_cursor("move");
         break;
     case "adjust_shape":
         I("mapport").onmousedown = undefined;
@@ -362,6 +441,7 @@ function enter_state(name) {
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
         set_cursor("none");
+        set_corner_handle_cursor("none");
         break;
     case "point_at":
         I("mapport").onmousedown = undefined;
@@ -370,6 +450,16 @@ function enter_state(name) {
         I("mapport").onwheel = undefined;
         I("avatar-clickable").onmousedown = undefined;
         set_cursor("none");
+        set_corner_handle_cursor("none");
+        break;
+    case "adjust_corner":
+        I("mapport").onmousedown = undefined;
+        I("mapport").onmousemove = mousemove_adjust_corner;
+        I("mapport").onmouseup = mouseup_adjust_corner_done;
+        I("mapport").onwheel = undefined;
+        I("avatar-clickable").onmousedown = undefined;
+        set_cursor("none");
+        set_corner_handle_cursor("none");
         break;
     default:
         throw name + " is not a state";
@@ -403,6 +493,37 @@ function fatal(msg) {
 var app = null;
 var pending_avatar_update = null;
 
+var clickedColorButtonId = null;
+
+function close_color_dialog(e) {
+    I("color_picker").style.display = 'none';
+}
+
+function rgbStr_to_rgbArr(s, fallback) {
+    if (s.startsWith("rgb(")) {
+        const a = s.split(/rgb\(|, |\)/);
+        return [a[1], a[2], a[3]];
+    } else {
+        return fallback;
+    }
+}
+
+function init_color_picker() {
+    const p = color_picker.create();
+    p.oncolorchange = (colorstr) => {
+        I("pick-fill-color").style.backgroundColor = colorstr;
+    }
+    I("color_picker_inner").appendChild(p);
+    I("close-color-picker").onclick = close_color_dialog;
+    // I("pick-stroke-color").onclick = open_color_dialog;
+    I("pick-fill-color").onclick = (e) => {
+        clickedColorButtonId = e.target.getAttribute("id");
+        I("color_picker").style.display = 'block';
+        const a = rgbStr_to_rgbArr(I("pick-fill-color").style.backgroundColor, [255, 255, 0]);
+        p.set_hsl(...rgbToHsl(...a));
+    }
+}
+
 function init() {
     if (peerjs.util.browser !== 'chrome') {
         fatal(`Only Chrome is supported!`);
@@ -411,7 +532,7 @@ function init() {
     init_avatar_picker();
     I("color_picker").style.display = 'none';
     // I("pick-stroke-color").style.backgroundColor = 'black';
-    I("pick-fill-color").style.backgroundColor = `hsl(${(Date.now() + 180) % 360}, 100%, 50%)`;
+    I("pick-fill-color").style.backgroundColor = "rgb(104, 212, 19)"; //`rgb(0, 182, 111)`;
     set_tool_onclick(toolbutton_click);
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -429,6 +550,7 @@ function init() {
     const worldJsonUrl = urlParams.get("worldJsonUrl");
 
     replace_node(initial_svg(), I("mainsvg"));
+    I("BackgroundRect").oncontextmenu = background_contextmenu;
 
     switch (mode) {
     case "server": {
