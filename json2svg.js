@@ -45,8 +45,25 @@ function jump_path_d(from, to, jumpHeight) {
     return `M${from.x},${from.y} C${from.x},${from.y-jumpHeight} ${to.x},${to.y-jumpHeight} ${to.x},${to.y}`;
 }
 
-function avatar_jump_to(a, p) {
-    const d = jump_path_d(a.pos, p, 400);
+function line_path_d(from, to) {
+    return `M${from.x},${from.y} L${to.x},${to.y}`;
+}
+
+function avatar_go_to(a, p, animationName) {
+    var d = null;
+    switch (animationName) {
+    case "jump":
+        d = jump_path_d(a.pos, p, 400);
+        break;
+    case "line":
+        d = line_path_d(a.pos, p);
+        break;
+    default:
+        a.g.style.removeProperty("offset-path");
+        a.g.style.transform = `translate(${p.x}px, ${p.y}px)`;
+        a.pos = p;
+        return;
+    }
 
     const showJumpTrace = false;
     if (showJumpTrace) {
@@ -56,19 +73,11 @@ function avatar_jump_to(a, p) {
 
     a.g.style.removeProperty("transform");
     a.g.style.offsetPath = `path('${d}')`;
-    console.log(a.g.style.cssText);
 
     // The right way would be something like this:
     // app.myAvatar.g.animate([{ "offset-distance": "0%" }, { "offset-distance": "100%" }], 500);
     // But since that doesn't work, we re-trigger the animation by removing and adding the node:
     replace_with_clone(a.g);
-    a.pos = p;
-}
-
-// without jump animation
-function avatar_place_at(a, p) {
-    a.g.style.removeProperty("offset-path");
-    a.g.style.transform = `translate(${p.x}px, ${p.y}px)`;
     a.pos = p;
 }
 
@@ -101,11 +110,7 @@ function upd_avatar(a, j) {
         }
     }
     if (j.pos) {
-        if (j.animate === 'jump') {
-            avatar_jump_to(a, new Point(j.pos.x, j.pos.y));
-        } else {
-            avatar_place_at(a, new Point(j.pos.x, j.pos.y));
-        }
+        avatar_go_to(a, new Point(j.pos.x, j.pos.y), j.animate);
     }
     if (j.pointer !== null && j.pointer !== undefined) {
         for (const p of a.g.getElementsByClassName("avatar-pointer")) p.remove();
@@ -178,7 +183,7 @@ function select_elem(who, elem) {
             const x = ps[i+1];
             const y = ps[i+2];
             const ch = corner_handle(x, y, app.avatars[who].color);
-            ch.onmousedown = mousedown_corner_handle(elem, new Point(x, y), (p) => {
+            ch.onpointerdown = mousedown_corner_handle(elem, new Point(x, y), (p) => {
                 const new_ps = elem.getAttribute("d").split(' ');
                 new_ps[i+1] = p.x.toFixed(1);
                 new_ps[i+2] = p.y.toFixed(1);
@@ -192,7 +197,7 @@ function select_elem(who, elem) {
         }
         break;
     default:
-        console.log("don't know how to select", elem.tagName);
+        log.debug("don't know how to select", elem.tagName);
         break;
     }
     I(app.avatarId === who ? "OwnHandles" : "OtherHandles").appendChild(g);
@@ -212,7 +217,7 @@ function update_select_handles(elem) {
 }
 
 function process_json_action(j) {
-    // console.log("processing", j);
+    log.debug("processing", j);
     check_field(j, "action");
     switch (j.action) {
     case "upd":
