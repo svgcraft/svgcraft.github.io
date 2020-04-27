@@ -1,5 +1,10 @@
 "use strict";
 
+// drops folder path and file extension
+function path2filename(p) {
+    return p.substring(p.lastIndexOf('/')+1, p.lastIndexOf('.'));
+}
+
 class App {
     constructor() {
         // ever growing list of JSON actions
@@ -11,16 +16,41 @@ class App {
         this.avatars = {};
 
         this.nextFreshElemId = 0;
+
+        // initialized when the first json action containing this data is processed
+        this.initialView = null; // x, y, scale
+        this.initialPos = null; // x, y
+    }
+
+    init_from_worldUrl() {
+        if (this.worldUrl.endsWith('.json')) {
+            fetch(this.worldUrl)
+                .then(res => res.json())
+                .then((j) => this.init_with_json(j));
+        } else if (this.worldUrl.endsWith('.svg')) {
+            const title = path2filename(this.worldUrl);
+            fetch(this.worldUrl)
+                .then(res => res.text())
+                .then(s => this.init_with_xml_str(s, title));
+        } else {
+            throw 'unknown file extension';
+        }
+    }
+
+    init_with_xml_str(s, title) {
+        const dom = (new DOMParser()).parseFromString(s, "text/xml");
+        const j = svg2json(dom);
+        j.push({action: "upd", "id": "document", "title": title});
+        this.init_with_json(j);
     }
 
     gen_elem_id(tag) {
-        return `${this.avatarId}_${tag}${this.nextFreshElemId++}`;
-    }
-
-    new_avatar0_command() {
-        for (const c of this.history) {
-            if (c.action === "new" && c.id === "avatar0") return c;
-        }
+        // note: in previous editing sessions, some ids might already have been taken!
+        var cand;
+        do {
+            cand = `${this.avatarId}_${tag}${this.nextFreshElemId++}`;
+        } while (I(cand));
+        return cand;
     }
 
     // init should not be called by constructor.
@@ -36,7 +66,6 @@ class App {
             this.post(pending_avatar_update);
         }
         pending_avatar_update = null;
-        app.myAvatar.g.children[0].setAttribute("id", "avatar-clickable"); // for pointer
         set_transform();
         init_uievents();
     }

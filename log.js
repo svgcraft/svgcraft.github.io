@@ -6,7 +6,9 @@ const log = {
     event: console.log,
     connection: console.log,
     data: ignore,
-    debug: ignore
+    debug: ignore,
+    parsing: console.log,
+    numbers: console.warn
 }
 
 // By running "log.topicname = ignore" or "log.topicname = console.log" in the console,

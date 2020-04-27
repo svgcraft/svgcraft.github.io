@@ -7,18 +7,16 @@
 
 class Server extends App {
 
-    constructor(serverId, worldJsonUrl) {
+    constructor(serverId, worldUrl) {
         super();
         this.serverId = serverId;
-        this.worldJsonUrl = worldJsonUrl;
+        this.worldUrl = worldUrl;
         this.avatarId = "avatar0";
         this.clientConns = {}; // maps clientId to PeerJS connection
     }
 
     init() {
-        fetch(this.worldJsonUrl)
-            .then(res => res.json())
-            .then((j) => this.init_with_json(j));
+        this.init_from_worldUrl();
     }
 
     init_with_json(j) {
@@ -93,14 +91,15 @@ class Server extends App {
     }
 
     new_client_avatar_command(clientIdNumber) {
-        const c = this.new_avatar0_command();
         const shiftX = Avatar.radius * 4 * clientIdNumber;
         return {
             action: "new",
             tag: "avatar",
             id: `avatar${clientIdNumber}`,
-            pos: {x: c.pos.x - shiftX, y: c.pos.y},
-            view: {x: c.view.x + shiftX, y: c.view.y, scale: c.view.scale}
+            pos: {x: this.initialPos.x - shiftX, y: this.initialPos.y},
+            view: {x: this.initialView.x + shiftX * this.initialView.scale,
+                   y: this.initialView.y,
+                   scale: this.initialView.scale}
         };
     }
 

@@ -12,8 +12,6 @@ const tag_types = {
     pattern: ["id", "x", "y", "width", "height"].concat(style_attrs)
 }
 
-const initialView = {x: 0, y: 0, scale: 1.0}
-
 function check_field(j, fieldName) {
     if (!j[fieldName]) throw `Field "${fieldName}" is missing`;
 }
@@ -86,11 +84,17 @@ function new_avatar(j) {
     if (app.avatars[j.id]) throw `${j.id} already exists`;
     const a = new Avatar(j.id);
     app.avatars[j.id] = a;
-    const c = svg("circle", {cx: a.pos.x, cy: a.pos.y, r: Avatar.radius, fill: a.color});
+    const c = svg("circle", {cx: 0, cy: 0, r: Avatar.radius, fill: a.color});
     const g = svg("g", {"id": j.id, "class": "avatar"}, [c]);
     I("mainsvg").appendChild(g);
     add_emoji_to_avatar(a);
     upd_avatar(a, j);
+}
+
+function floatify_attrs(o, attrs) {
+    for (const attr of attrs) {
+        o[attr] = parseFloat(o[attr]);
+    }
 }
 
 function upd_avatar(a, j) {
@@ -99,17 +103,34 @@ function upd_avatar(a, j) {
         a.emojiUtf = j.emojiUtf;
         a.g.children[1].setAttributeNS('http://www.w3.org/1999/xlink', 'href', a.emojiUrl);
     }
-    if (j.hue) {
+    if (j.hue !== null & j.hue !== undefined) {
         a.hue = j.hue;
         a.g.children[0].setAttribute("fill", a.color);
     }
     if (j.view) {
         transfer_attrs_to_obj(j.view, ["x", "y", "scale"], a.view);
         if (app.myAvatar && a.id === app.myAvatar.id) {
+            app.initialView = app.initialView || a.view;
             set_transform();
         }
     }
+    if (j.viewBox) {
+        floatify_attrs(j.viewBox, ['x', 'y', 'width', 'height']);
+        if (app.myAvatar && a.id === app.myAvatar.id) {
+            const rect = I("mapport").getBoundingClientRect();
+            a.view.scale = Math.min(rect.width / j.viewBox.width, rect.height / j.viewBox.height);
+            a.view.x = (- j.viewBox.x + (rect.width / a.view.scale - j.viewBox.width) / 2) * a.view.scale;
+            a.view.y = (- j.viewBox.y + (rect.height / a.view.scale - j.viewBox.height) / 2) * a.view.scale;
+            app.initialView = app.initialView || a.view;
+            set_transform();
+        } else {
+            a.view.x = j.viewBox.x;
+            a.view.y = j.viewBox.y;
+            // can't set a.view.scale because we don't know other user's screen dimensions
+        }
+    }
     if (j.pos) {
+        app.initialPos = app.initialPos || j.pos;
         avatar_go_to(a, new Point(j.pos.x, j.pos.y), j.animate);
     }
     if (j.pointer !== null && j.pointer !== undefined) {
@@ -118,7 +139,8 @@ function upd_avatar(a, j) {
             const angle = parseFloat(j.pointer);
             if (isNaN(angle)) throw `${angle} is not a number`;
             // coordinates are relative to a.pos because it will be put inside a.g
-            const t = isosceles_triangle(Point.zero(), Avatar.pointerBaseWidth, angle, Avatar.pointerRadius);
+            const t = isosceles_triangle(Point.zero(), Avatar.pointerBaseWidth,
+                                         angle/180*Math.PI, Avatar.pointerRadius);
             t.setAttribute("fill", a.color);
             t.setAttribute("class", "avatar-pointer");
             a.g.prepend(t);
@@ -224,8 +246,31 @@ function update_select_handles(elem) {
     }
 }
 
+const rounding_blacklist = ['scale'];
+
+function round_path(s) {
+    return s.split(' ').map(e => (isNaN(e) ? e : Math.round(e))).join(' ');
+}
+
+function round_numbers(j) {
+    // works for both lists and objects
+    for (let [key, value] of Object.entries(j)) {
+        if (rounding_blacklist.includes(key)) continue;
+        if (typeof(value) === 'number') {
+            j[key] = Math.round(value);
+        } else if (typeof(value) === 'object') {
+            round_numbers(value);
+        } else if (key === 'd') {
+            j[key] = round_path(value);
+        } else if (typeof(value) === 'string' && !isNaN(value)) {
+            log.numbers(`${value} is suspicious: looks like a number, but is a string`);
+        }
+    }
+}
+
 function process_json_action(j) {
     log.debug("processing", j);
+    round_numbers(j);
     check_field(j, "action");
     switch (j.action) {
     case "upd":
