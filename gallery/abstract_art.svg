@@ -1,1 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="601" height="764" viewBox="1054.3401715385874 -83.78870507510057 600.2240516596389 763.0136031080934"><defs id="Defs"/><rect id="BackgroundRect" x="1044.3401715385874" y="-93.78870507510057" width="643.2072674193316" height="802.0019832494193" fill="white"/><g id="EditableElements"><path d="M 3668.4 -556.6 L -455.4 -546.5 L -457.9 1909.7 L 3684.4 1928.1 z" id="avatar0_path0" fill="rgb(0, 0, 0)"/><path d="M 1279.4 333.9 L 1213.4 225.7 L 1069.4 184.1 L 1069.2 400.8 z" id="avatar0_path1" fill="rgb(255, 179, 4)"/><path d="M 1560.3 430.3 L 1641.0 465.0 L 1639.4 135.2 L 1525.6 359.5 z" id="avatar0_path2" fill="rgb(255, 179, 4)"/><path d="M 1383.1 591.5 L 1385.9 590.5 L 1504.5 540.2 L 1422.1 507.6 z" id="avatar0_path3" fill="rgb(255, 179, 4)"/><path d="M 1549.5 434.3 L 1374.5 407.1 L 1275.3 493.6 L 1419.9 499.5 z" id="avatar0_path4" fill="rgb(255, 254, 4)"/><path d="M 1638.8 40.3 L 1477.9 69.2 L 1392.8409425474924 233.35855806021345 L 1639.7 121.5 z" id="avatar0_path5" fill="rgb(255, 254, 4)"/><path d="M 1369.1 -72.4 L 1069.4 -73.0 L 1068.9 171.2 L 1278.9 72.4 z" id="avatar0_path6" fill="rgb(64, 0, 155)"/><path d="M 1640.6 478.0 L 1523.0 541.9 L 1468.2 666.2 L 1641.8 665.9 z" id="avatar0_path7" fill="rgb(64, 0, 155)"/><path d="M 1388.4 244.9 L 1299.6 333.7 L 1377.8 393.1 L 1515.4 361.3 z" id="avatar0_path8" fill="rgb(0, 132, 10)"/><path d="M 1254.5 499.3 L 1070.8 412.2 L 1069.7 578.5 L 1226.5 574.4 z" id="avatar0_path9" fill="rgb(0, 132, 10)"/><path d="M 1343.2531837719885 118.44562848876058 L 1286.9 81.3 L 1221.9 217.3 L 1380.9 235.9 z" id="avatar0_path10" fill="rgb(4, 138, 255)"/><path d="M 1539.6 -72.2 L 1379.9 -72.2 L 1350.9 110.1 L 1471.0 62.5 z" id="avatar0_path11" fill="rgb(0, 132, 10)"/><path d="M 1460.6 666.0 L 1228.6 665.8 L 1231.7 581.6 L 1378.5 597.4 z" id="avatar0_path12" fill="rgb(4, 138, 255)"/><path d="M 1550.3 -72.0 L 1640.4 -72.7 L 1638.2 30.3 z" id="avatar0_path13" fill="rgb(4, 138, 255)"/><path d="M 1217.1 665.7 L 1069.0 665.6 L 1070.7 593.8 z" id="avatar0_path14" fill="rgb(255, 179, 4)"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="644" height="822" viewBox="1057 -85 598 763">
+  <defs id="Defs"></defs>
+  <rect id="BackgroundRect" x="1047" y="-95" width="628" height="792" fill="white"></rect>
+  <g id="EditableElements">
+    <path d="M 3668 -557 L -455 -546 L -458 1910 L 3684 1928 z" id="avatar0_path0" fill="rgb(0, 0, 0)"></path>
+    <path d="M 1279 334 L 1213 226 L 1069 184 L 1069 401 z" id="avatar0_path1" fill="rgb(255, 179, 4)"></path>
+    <path d="M 1560 430 L 1641 465 L 1639 135 L 1526 360 z" id="avatar0_path2" fill="rgb(255, 179, 4)"></path>
+    <path d="M 1383 592 L 1386 591 L 1505 540 L 1422 508 z" id="avatar0_path3" fill="rgb(255, 179, 4)"></path>
+    <path d="M 1550 434 L 1375 407 L 1275 494 L 1420 500 z" id="avatar0_path4" fill="rgb(255, 254, 4)"></path>
+    <path d="M 1639 40 L 1478 69 L 1393 233 L 1640 122 z" id="avatar0_path5" fill="rgb(255, 254, 4)"></path>
+    <path d="M 1369 -72 L 1069 -73 L 1069 171 L 1279 72 z" id="avatar0_path6" fill="rgb(64, 0, 155)"></path>
+    <path d="M 1641 478 L 1523 542 L 1468 666 L 1642 666 z" id="avatar0_path7" fill="rgb(64, 0, 155)"></path>
+    <path d="M 1388 245 L 1300 334 L 1378 393 L 1515 361 z" id="avatar0_path8" fill="rgb(0, 132, 10)"></path>
+    <path d="M 1255 499 L 1071 412 L 1070 579 L 1227 574 z" id="avatar0_path9" fill="rgb(0, 132, 10)"></path>
+    <path d="M 1343 118 L 1287 81 L 1222 217 L 1381 236 z" id="avatar0_path10" fill="rgb(4, 138, 255)"></path>
+    <path d="M 1540 -72 L 1380 -72 L 1351 110 L 1471 63 z" id="avatar0_path11" fill="rgb(0, 132, 10)"></path>
+    <path d="M 1461 666 L 1229 666 L 1232 582 L 1379 597 z" id="avatar0_path12" fill="rgb(4, 138, 255)"></path>
+    <path d="M 1550 -72 L 1640 -73 L 1638 30 z" id="avatar0_path13" fill="rgb(4, 138, 255)"></path>
+    <path d="M 1217 666 L 1069 666 L 1071 594 z" id="avatar0_path14" fill="rgb(255, 179, 4)"></path>
+  </g>
+</svg>

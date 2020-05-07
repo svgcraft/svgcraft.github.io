@@ -1,1 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1163" height="822" viewBox="-2124.318268680998 -299.48495019346876 3502.1729558880797 2475.3105500773872"><defs id="Defs"/><rect id="BackgroundRect" x="-2134.318268680998" y="-309.48495019346876" width="3532.1729558880797" height="2505.3105500773872" fill="rgb(1, 171, 230)"/><g id="EditableElements"><path d="M 542.3 142.5 L 865.7407633463542 228.42594146728516 L 614.1 488.4 L 674.6 274.7 z" id="avatar0_path0" fill="rgb(246, 215, 0)"/><path d="M 788.3 249.1 L 655.2 172.3 L 714.8 265.5 L 700.1 399.4 z" id="avatar0_path1" fill="rgb(0, 17, 163)"/><path d="M 655.0 255.4 L 682.5 273.2 L 663.8 313.3 L 860.6 230.3 z" id="avatar0_path2" fill="rgb(0, 0, 0)"/><path d="M -153.8 383.5 L -205.61210832701462 67.1030611266903 L -458.6 130.5 L -465.8830425598023 544.6309567532056 z" id="avatar0_path3" fill="rgb(231, 227, 0)"/><path d="M -301.5 257.1 L -205.4 67.0 L -153.7 383.6 z" id="avatar0_path4" fill="rgb(0, 17, 163)"/><path d="M -301.0 257.3 L -466.2 545.2 L -458.6 130.5 z" id="avatar0_path5" fill="rgb(189, 17, 17)"/><path d="M -465.7 541.6 L -463.4 543.4 L -599.1 700.6 z" id="avatar0_path6" fill="rgb(0, 17, 163)"/><path d="M -605.0 621.9 L -601.3 702.3 L -522.8 691.8 L -523.6 612.6 z" id="avatar0_path7" fill="rgb(0, 17, 163)"/><path d="M -752.1 825.7 L -598.0 701.2 L -600.8 700.8 L -756.3 826.3 z" id="avatar0_path8" fill="rgb(0, 17, 163)"/><path d="M -762.4 883.6 L -744.9725219267676 817.7078556665831 L -808.8 805.7 L -833.0 870.8 z" id="avatar0_path9" fill="rgb(231, 227, 0)"/><path d="M -1057.0 992.2 L -1054.5 993.1 L -829.5 871.3 L -831.4 868.0 z" id="avatar0_path10" fill="rgb(0, 17, 163)"/><path d="M -1049.2256866162884 1018.6310086398677 L -1034.3920348254874 981.209730931381 L -1071.813312533974 966.3760791405799 L -1086.6469643247751 1003.7973568490665 z" id="avatar0_path11" fill="rgb(189, 17, 17)"/><path d="M -1085.8 1003.3 L -1084.9 1003.8 L -1730.9 1275.0 L -1792.3 1300.9 z" id="avatar0_path12" fill="rgb(0, 17, 163)"/><path d="M 347.6 1050.1 L 261.97651532060974 716.9628717006137 L 25.6 977.5 L 79.60423179514973 1331.0735034332943 z" id="avatar0_path13" fill="rgb(246, 176, 0)"/><path d="M -5.4 1149.1 L 274.1 708.2 L -152.1 1010.6 L -3.3 993.9 z" id="avatar0_path14" fill="rgb(0, 41, 195)"/><path d="M 250.0 1230.8 L 326.8 1087.7 L 446.0 1199.2 L 256.6 704.9 z" id="avatar0_path15" fill="rgb(0, 41, 195)"/><path d="M 184.7 1076.0 L 205.6 907.0 L 129.5 1059.3 L 66.1 1377.9 z" id="avatar0_path16" fill="rgb(189, 17, 17)"/><path d="M -82.7 1646.7 L 66.3 1377.7 L 67.9 1368.7 L -83.2 1645.8 z" id="avatar0_path17" fill="rgb(104, 104, 104)"/><path d="M -255.1 1582.9 L -269.3 1592.4 L -272.6 1579.2 L -277.3 1590.0 z" id="avatar0_path18" fill="rgb(1, 171, 230)"/><path d="M -81.9 1645.6 L -82.7 1645.4 L -240.9 1822.6 L -369.5 1966.7 z" id="avatar0_path19" fill="rgb(104, 104, 104)"/><path d="M 272.6 675.1 L 218.4 727.3 L 260.1 721.7 L 287.3 745.8 z" id="avatar0_path20" fill="rgb(1, 171, 230)"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1146" height="822" viewBox="-2124 -318 3502 2512">
+  <defs id="Defs"></defs>
+  <rect id="BackgroundRect" x="-2134" y="-328" width="3532" height="2542" fill="rgb(1, 171, 230)"></rect>
+  <g id="EditableElements">
+    <path d="M 542 143 L 866 228 L 614 488 L 675 275 z" id="avatar0_path0" fill="rgb(246, 215, 0)"></path>
+    <path d="M 788 249 L 655 172 L 715 266 L 700 399 z" id="avatar0_path1" fill="rgb(0, 17, 163)"></path>
+    <path d="M 655 255 L 683 273 L 664 313 L 861 230 z" id="avatar0_path2" fill="rgb(0, 0, 0)"></path>
+    <path d="M -154 384 L -206 67 L -459 131 L -466 545 z" id="avatar0_path3" fill="rgb(231, 227, 0)"></path>
+    <path d="M -301 257 L -205 67 L -154 384 z" id="avatar0_path4" fill="rgb(0, 17, 163)"></path>
+    <path d="M -301 257 L -466 545 L -459 131 z" id="avatar0_path5" fill="rgb(189, 17, 17)"></path>
+    <path d="M -466 542 L -463 543 L -599 701 z" id="avatar0_path6" fill="rgb(0, 17, 163)"></path>
+    <path d="M -605 622 L -601 702 L -523 692 L -524 613 z" id="avatar0_path7" fill="rgb(0, 17, 163)"></path>
+    <path d="M -752 826 L -598 701 L -601 701 L -756 826 z" id="avatar0_path8" fill="rgb(0, 17, 163)"></path>
+    <path d="M -762 884 L -745 818 L -809 806 L -833 871 z" id="avatar0_path9" fill="rgb(231, 227, 0)"></path>
+    <path d="M -1057 992 L -1054 993 L -829 871 L -831 868 z" id="avatar0_path10" fill="rgb(0, 17, 163)"></path>
+    <path d="M -1049 1019 L -1034 981 L -1072 966 L -1087 1004 z" id="avatar0_path11" fill="rgb(189, 17, 17)"></path>
+    <path d="M -1086 1003 L -1085 1004 L -1731 1275 L -1792 1301 z" id="avatar0_path12" fill="rgb(0, 17, 163)"></path>
+    <path d="M 348 1050 L 262 717 L 26 978 L 80 1331 z" id="avatar0_path13" fill="rgb(246, 176, 0)"></path>
+    <path d="M -5 1149 L 274 708 L -152 1011 L -3 994 z" id="avatar0_path14" fill="rgb(0, 41, 195)"></path>
+    <path d="M 250 1231 L 327 1088 L 446 1199 L 257 705 z" id="avatar0_path15" fill="rgb(0, 41, 195)"></path>
+    <path d="M 185 1076 L 206 907 L 130 1059 L 66 1378 z" id="avatar0_path16" fill="rgb(189, 17, 17)"></path>
+    <path d="M -83 1647 L 66 1378 L 68 1369 L -83 1646 z" id="avatar0_path17" fill="rgb(104, 104, 104)"></path>
+    <path d="M -255 1583 L -269 1592 L -273 1579 L -277 1590 z" id="avatar0_path18" fill="rgb(1, 171, 230)"></path>
+    <path d="M -82 1646 L -83 1645 L -241 1823 L -369 1967 z" id="avatar0_path19" fill="rgb(104, 104, 104)"></path>
+    <path d="M 273 675 L 218 727 L 260 722 L 287 746 z" id="avatar0_path20" fill="rgb(1, 171, 230)"></path>
+  </g>
+</svg>

@@ -5,6 +5,18 @@ function path2filename(p) {
     return p.substring(p.lastIndexOf('/')+1, p.lastIndexOf('.'));
 }
 
+function dataURI_to_bytestr(dataURI) {
+    if (dataURI.split(',')[0].indexOf('base64') >= 0) {
+        return atob(dataURI.split(',')[1]);
+    } else {
+        return unescape(dataURI.split(',')[1]);
+    }
+}
+
+function mimetype_of_dataURI(dataURI) {
+    return dataURI.split(',')[0].split(':')[1].split(';')[0];
+}
+
 class App {
     constructor() {
         // ever growing list of JSON actions
@@ -23,7 +35,20 @@ class App {
     }
 
     init_from_worldUrl() {
-        if (this.worldUrl.endsWith('.json')) {
+        if (this.worldUrl.startsWith('LOCAL/')) {
+            // TODO refactor to not need url params here
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!urlParams.has('data')) {
+                fatal("No 'data' argument");
+            }
+            const dataURI = urlParams.get('data');
+            const mimetype = mimetype_of_dataURI(dataURI);
+            if (mimetype !== 'image/svg+xml') {
+                fatal(`Expected MIME type image/svg+xml, but got ${mimetype}`);
+            }
+            const title = path2filename(this.worldUrl);
+            this.init_with_xml_str(dataURI_to_bytestr(dataURI), title);
+        } else if (this.worldUrl.endsWith('.json')) {
             fetch(this.worldUrl)
                 .then(res => res.json())
                 .then((j) => this.init_with_json(j));

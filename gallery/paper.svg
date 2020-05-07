@@ -1,1 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500"><defs id="Defs"><pattern id="MeasurementDots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="2" height="2" fill="#dddddd"/></pattern></defs><rect id="BackgroundRect" x="-10" y="-10" width="520" height="520" fill="url(#MeasurementDots)"/><g id="EditableElements"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+  <defs id="Defs">
+    <pattern id="MeasurementDots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="2" height="2" fill="#dddddd"></rect>
+    </pattern>
+  </defs>
+  <rect id="BackgroundRect" x="-116" y="-10" width="742" height="530" fill="url(#MeasurementDots)"></rect>
+  <g id="EditableElements"></g>
+</svg>
