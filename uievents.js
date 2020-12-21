@@ -158,6 +158,121 @@ class ShapeTool extends Tool {
     }
 }
 
+// TODO merge with ShapeTool
+class BlobTool extends Tool {
+    constructor() {
+        super();
+        this.allPoints = null;
+    }
+    pointerdown(e) {
+        this.allPoints = [event_to_world_coords(e)];
+        super.pointerdown(e);
+    }
+    first_drag(e) {
+        const p = event_to_world_coords(e);
+        if (selectedElemId) {
+            app.post({
+                action: "deselect",
+                who: app.avatarId,
+                what: [selectedElemId]
+            });
+            selectedElemId = null;
+        }
+        this.move_avatar_to_shape_corner(p);
+        this.allPoints.push(p);
+        const s = points_to_path(this.allPoints);
+        s.action = 'new';
+        s.tag = 'path';
+        s.id = app.gen_elem_id(s.tag);
+        s.fill = 'transparent';
+        s.stroke = app.myAvatar.color;
+        s["stroke-width"] = 2;
+        app.post(s);
+        selectedElemId = s.id;
+        app.post({
+            action: "select",
+            who: app.avatarId,
+            what: [selectedElemId]
+        });
+    }
+    continue_drag(e) {
+        const p = event_to_world_coords(e);
+        this.move_avatar_to_shape_corner(p);
+        this.allPoints.push(p);
+        const s = points_to_path(this.filter_points());
+        s.action = 'upd';
+        s.id = selectedElemId;
+        app.post(s);
+    }
+    end_drag(e) {
+        app.post([{
+            action: "upd",
+            id: app.avatarId,
+            pointer: "none"
+        }, {
+            action: 'upd',
+            id: selectedElemId,
+            "stroke-width": 0,
+            "fill": I("pick-fill-color").style.backgroundColor
+        }]);
+        this.allPoints = null;
+    }
+    // "private"
+    // removes points which are old && useless from allPoints, and returns an
+    // even more filtered list where all useless points were removed
+    filter_points() {
+        const keep = Array(this.allPoints.length).fill(true);
+        var best = null;
+        do {
+            best = null;
+            var lowestDist = handle_radius(); // don't remove points with a dist larger than this
+            var prev = 0; // point 0 is always kept
+            var cur = 1;
+            while (cur < this.allPoints.length && !keep[cur]) cur++;
+            var next = cur + 1;
+            while (next < this.allPoints.length && !keep[next]) next++;
+            while (next < this.allPoints.length) {
+                // prev,cur,next are three points with keep[..] == true
+                const dist = dist_from_line(this.allPoints[cur], this.allPoints[prev], this.allPoints[next]);
+                if (dist < lowestDist) {
+                    lowestDist = dist;
+                    best = cur;
+                }
+                prev = cur;
+                cur = next;
+                do { next++; } while (next < this.allPoints.length && !keep[next]);
+            }
+            if (best !== null) keep[best] = false;
+        } while (best !== null);
+        const res = [];
+        const upd = [];
+        for (let i = 0; i < this.allPoints.length; i++) {
+            if (keep[i] || this.allPoints.length - i <= 100) { // keep last 100 points no matter what
+                upd.push(this.allPoints[i]);
+            }
+            if (keep[i]) {
+                res.push(this.allPoints[i]);
+            }
+        }
+        this.allPoints = upd;
+        return res;
+    }
+    move_avatar_to_shape_corner(p) {
+        // last point might be too noisy, go back a bit further:
+        let i = this.allPoints.length-1;
+        while (i > 0 && p.distanceTo(this.allPoints[i]) < 2 * Avatar.radius) i--; // TODO respect scale
+        const prev = this.allPoints[i];
+        const d = p.distanceTo(prev) + Avatar.pointerRadius;
+        const alpha = p.sub(prev).angle();
+        app.post({
+            action: "upd",
+            id: app.avatarId,
+            pos: prev.add(Point.polar(d, alpha)),
+            pointer: alpha / Math.PI * 180 + 180
+        });
+    }
+}
+
 // possible values: any member name of the tools object above
 var activeTool = "navigation";
 
@@ -186,7 +301,8 @@ class PointerEvents {
             pointing: new PointingTool(),
             rectangle: new ShapeTool(),
             triangle: new ShapeTool(),
-            square: new ShapeTool()
+            square: new ShapeTool(),
+            blob: new BlobTool()
         };
         this._draggee = null; // can be null, "handle" or "tool"
         this.onadjustcorner = null;
@@ -261,7 +377,7 @@ class PointerEvents {
         if (this.pointerState === "UP") return; // mousedown happened somewhere else
         switch (this.draggee) {
         case "tool":
-            this.tools[activeTool].end_drag(e);
+            if (this.pointerState === "DRAGGING") this.tools[activeTool].end_drag(e);
             break;
         case "handle":
             app.post({
@@ -317,6 +433,9 @@ function set_cursor_for_active_tool() {
     case "rectangle":
     case "triangle":
         set_cursor("crosshair");
+        break;
+    case "blob":
+        set_cursor("default");
         break;
     default:
         throw 'unknown tool'

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1210" height="773" viewBox="-735 -3857 7349 4695">
+  <defs id="Defs">
+    <pattern id="Ocean" x="0" y="0" width="80" height="40" patternUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="80" height="40" fill="#4dc3ff"></rect>
+      <path d="M 3 9 c 6 -6, 11 -6, 17 0 s 11 6, 17 0" stroke-width="4" stroke="#b3e6ff" stroke-linecap="round" fill="transparent"></path>
+      <path d="M 43 29 c 6 -6, 11 -6, 17 0 s 11 6, 17 0" stroke-width="4" stroke="#b3e6ff" stroke-linecap="round" fill="transparent"></path>
+    </pattern>
+  </defs>
+  <rect id="BackgroundRect" x="-745" y="-3867" width="7379" height="4725" fill="url(#Ocean)"></rect>
+  <g id="EditableElements">
+    <path d="M -230 15 L 164 -191 L 455 -217 L 896 -167 L 1129 -52 L 1174 278 L 1056 534 L 931 638 L 707 705 L 418 573 L 208 584 L -256 738 L -336 709 L -387 606 L -400 180 L -357 103" id="avatar0_path0" fill="rgb(195, 182, 63)" stroke="hsl(60, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 1231 -600 L 1162 -1573 L 1669 -2212 L 2125 -2426 L 3523 -2236 L 4279 -1864 L 5049 -2081 L 5301 -1684 L 5318 -880 L 4745 -172 L 4245 8 L 2349 -441 L 1756 -306" id="avatar0_path1" fill="rgb(195, 182, 63)" stroke="hsl(60, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 2506 -2242 L 2573 -2772 L 2530 -3270 L 2617 -3275 L 2680 -2695 L 2667 -2245" id="avatar0_path4" fill="rgb(108, 84, 16)" stroke="hsl(60, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 2210 -2959 L 2307 -3129 L 2567 -3307 L 2432 -3456 L 2202 -3163 L 2060 -2873" id="avatar0_path5" fill="rgb(41, 154, 20)" stroke="hsl(60, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 2954 -2935 L 2780 -3211 L 2566 -3265 L 2620 -3422 L 2788 -3384 L 2970 -3236 L 3047 -3008" id="avatar0_path6" fill="rgb(41, 154, 20)" stroke="hsl(60, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 2652 -3581 L 3082 -3429 L 3292 -3127 L 2950 -3373 L 2622 -3417 L 2550 -3475" id="avatar0_path7" fill="rgb(41, 154, 20)" stroke="hsl(60, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 2449 -3567 L 2226 -3441 L 1979 -3132 L 2138 -3166 L 2407 -3410 L 2658 -3471 L 2686 -3560 L 2581 -3606" id="avatar0_path8" fill="rgb(41, 154, 20)" stroke="hsl(60, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 2419 -3374 L 2330 -2976 L 2381 -2973 L 2464 -3160 L 2583 -3286 L 2639 -3425 L 2528 -3511" id="avatar0_path9" fill="rgb(41, 154, 20)" stroke="hsl(60, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 3872 -1962 L 3998 -1929 L 4020 -2611 L 3977 -3291 L 3864 -3252 L 3879 -2629 L 3778 -1941" id="avatar0_path3" fill="rgb(108, 84, 16)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 3896 -3231 L 3623 -3122 L 3536 -2998 L 3330 -2926 L 3606 -3228 L 3893 -3309" id="avatar0_path10" fill="rgb(41, 154, 20)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 3970 -3233 L 4270 -3155 L 4474 -2921 L 4590 -3023 L 4297 -3255 L 3960 -3311" id="avatar0_path11" fill="rgb(41, 154, 20)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 3956 -3448 L 4379 -3386 L 4718 -3084 L 4539 -3118 L 4362 -3288 L 3968 -3367" id="avatar0_path13" fill="rgb(41, 154, 20)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 3932 -3485 L 3450 -3354 L 3198 -3009 L 3412 -3103 L 3508 -3238 L 3910 -3302" id="avatar0_path14" fill="rgb(41, 154, 20)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 3741 -3318 L 4054 -3645 L 4287 -3686 L 4602 -3465 L 4711 -3226 L 4499 -3422 L 4329 -3492 L 4080 -3455 L 3997 -3241" id="avatar0_path15" fill="rgb(41, 154, 20)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 3882 -3627 L 3486 -3524 L 3291 -3326 L 3608 -3461 L 3778 -3493 L 3905 -3186 L 4087 -3523" id="avatar0_path16" fill="rgb(41, 154, 20)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 1304 -1602 L 1368 -2546 L 1679 -2758 L 1992 -2496 L 2045 -1523 L 1701 -1577 L 1417 -1525" id="avatar0_path17" fill="rgb(125, 125, 125)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 2626 -1503 L 2569 -2462 L 2460 -2559 L 2272 -2556 L 2236 -2673 L 1873 -2592 L 1795 -2443 L 1897 -2101 L 1791 -1491 L 1973 -1400 L 2445 -1432" id="avatar0_path18" fill="rgb(143, 143, 143)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 1538 -1493 L 1410 -1947 L 1222 -2022 L 1039 -1824 L 1075 -1499" id="avatar0_path20" fill="rgb(143, 143, 143)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 2084 -1354 L 3184 -1342 L 3116 -1708 L 2867 -1669 L 2513 -1966 L 2281 -1915 L 2133 -1666" id="avatar0_path21" fill="rgb(125, 125, 125)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 2115 -2608 L 2174 -2548 L 2167 -1327 L 2469 -1235 L 2023 -1156 L 1845 -1319 L 2021 -1378 L 2081 -2498 L 1988 -2580" id="avatar0_path23" fill="rgb(50, 184, 230)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 1901 -2562 L 1983 -2709 L 2143 -2718 L 2224 -2582 L 1983 -2529" id="avatar0_path24" fill="rgb(125, 125, 125)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+    <path d="M 2197 -1254 L 2927 -1250 L 3263 -994 L 3245 -722 L 2757 -612 L 2878 -316 L 2275 -424 L 2523 -668 L 3101 -851 L 2853 -1174 L 2307 -1160 L 2168 -1022 L 1840 -1068 L 1702 -1223 L 1830 -1383" id="avatar0_path25" fill="rgb(50, 184, 230)" stroke="hsl(90, 100%, 50%)" stroke-width="0"></path>
+  </g>
+</svg>

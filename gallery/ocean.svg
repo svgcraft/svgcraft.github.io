@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+  <defs id="Defs">
+    <pattern id="Ocean" x="0" y="0" width="80" height="40" patternUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="80" height="40" fill="#4dc3ff"></rect>
+      <path d="M 3 9 c 6 -6, 11 -6, 17 0 s 11 6, 17 0" stroke-width="4" stroke="#b3e6ff" stroke-linecap="round" fill="transparent"></path>
+      <path d="M 43 29 c 6 -6, 11 -6, 17 0 s 11 6, 17 0" stroke-width="4" stroke="#b3e6ff" stroke-linecap="round" fill="transparent"></path>
+    </pattern>
+  </defs>
+  <rect id="BackgroundRect" x="-10" y="-10" width="520" height="520" fill="url(#Ocean)"></rect>
+  <g id="EditableElements"></g>
+</svg>
