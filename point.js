@@ -4,6 +4,8 @@ class Point {
     constructor(x, y) {
         this.x = x || 0;
         this.y = y || 0;
+        if (typeof this.x !== 'number') throw new TypeError(`${x} is not a number`);
+        if (typeof this.y !== 'number') throw new TypeError(`${y} is not a number`);
     }
 
     static zero() {
@@ -12,6 +14,14 @@ class Point {
 
     static polar(r, alpha){
         return new Point(r * Math.cos(alpha), r * Math.sin(alpha));
+    }
+
+    static min(p1, p2) {
+        return p1.norm() < p2.norm() ? p1 : p2;
+    }
+
+    static infinity() {
+        return new Point(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
     }
 
     add(that) {
