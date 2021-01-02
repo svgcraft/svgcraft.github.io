@@ -71,7 +71,7 @@ class DecceleratingObject {
     }
 }
 
-let playerDecceleration = 2;
+let playerDecceleration = 10;
 
 class Player extends DecceleratingObject {
     // initialPos: Point
@@ -91,6 +91,7 @@ class Player extends DecceleratingObject {
         
         this.nextFreshSnowballId = 0;
         this.snowballs = new Map();
+        this.shootingAngle = 0;
 
         this.lastHitTime = Number.NEGATIVE_INFINITY;
         this.lastHitColor = null;
@@ -117,12 +118,35 @@ class Snowball extends DecceleratingObject {
     get decceleration() {
         return snowballDecceleration;
     }
+    toJson() {
+        const res = this.trajectoryJson();
+        res.type = "snowball";
+        res.id = this.id;
+        res.birthTime = this.birthTime;
+        // playerId is implicit from connection
+        return res;
+    }
+    // caller still needs to subtract timeSeniority and set playerId
+    static fromJson(e) {
+        const snowball = new Snowball();
+        snowball.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
+        snowball.zeroSpeedTime = e.t0;
+        snowball.angle = e.angle;
+        snowball.id = e.id;
+        snowball.birthTime = e.birthTime;
+        return snowball;
+    }
 }
 
 const headRadius = 0.5;
 const snowballRadius = 0.13;
 const arenaWidth = 16;
 const arenaHeight = 9;
+// "pointer" is the triangle pointing out of the head, whereas "cursor" is the mouse position
+const pointerRadius = headRadius * 1.9;
+const pointerBaseWidth = headRadius * 1.6;
+const cursorRadius = 0.1;
+
 let playerStartPos = null;
 
 function positionCircle(dom, pos, radius) {
@@ -141,6 +165,13 @@ function positionVector(dom, start, direction) {
     dom.setAttribute("y2", target.y);
 }
 
+function isoscelesTriangle(baseMid, baseLength, rotation, height) {
+    const tip = baseMid.add(Point.polar(height, rotation));
+    const p1 = baseMid.add(Point.polar(baseLength/2, rotation + Math.PI/2));
+    const p2 = baseMid.add(Point.polar(baseLength/2, rotation - Math.PI/2));
+    return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`;
+}
+
 function svg(tag, attrs, children, allowedAttrs) {
     const res = document.createElementNS("http://www.w3.org/2000/svg", tag);
     if (attrs) {
@@ -156,20 +187,71 @@ function svg(tag, attrs, children, allowedAttrs) {
     return res;
 }
 
-function positionElem(elem, x, y, w, h) {
+// "safe" dummy defaults
+let pxPerUnit = 123;
+let arenaLeft = 123;
+let arenaTop = 123;
+
+function onResize() {
     const svgArenaHeight = parseFloat(I("arena").getAttribute("viewBox").split(" ")[3]);
     const r = I("arenaRect").getBoundingClientRect();
     const pxArenaHeight = r.height;
-    const pxPerUnit = pxArenaHeight / svgArenaHeight;
-    elem.style.left = (pxPerUnit * (x + 0.7) + r.left) + "px";
-    elem.style.top = (pxPerUnit * (y + 0.7) + r.top) + "px";
+    pxPerUnit = pxArenaHeight / svgArenaHeight;
+    arenaTop = r.top;
+    arenaLeft = r.left;    
+}
+
+function eventToWorldCoords(e) {
+    const xInPort = e.clientX - arenaLeft;
+    const yInPort = e.clientY - arenaTop;
+    return new Point(xInPort / pxPerUnit - 0.7, yInPort / pxPerUnit - 0.7);
+}
+
+function positionElem(elem, x, y, w, h) {
+    elem.style.left = (pxPerUnit * (x + 0.7) + arenaLeft) + "px";
+    elem.style.top = (pxPerUnit * (y + 0.7) + arenaTop) + "px";
     if (w) elem.style.width = pxPerUnit * w + "px";
     if (h) elem.style.height = pxPerUnit * h + "px";
 }
 
-function positionPlayer(playerId, pos) {
-    positionCircle(I("circ_" + playerId), pos);
-    positionElem(I("video_" + playerId), pos.x - headRadius, pos.y - headRadius, 2 * headRadius, 2 * headRadius);
+function positionPlayer(playerId, player) {
+    positionCircle(I("circ_" + playerId), player.currentPos);
+    I("pointerTriangle_" + playerId).setAttribute("d", 
+        isoscelesTriangle(player.currentPos, pointerBaseWidth, player.shootingAngle, pointerRadius));
+    positionElem(I("video_" + playerId), player.currentPos.x - headRadius, player.currentPos.y - headRadius, 2 * headRadius, 2 * headRadius);
+}
+
+function initMouseMoveNavi(gameState) {
+    const player = gameState.players.get(gameState.myId);
+    I("arena").addEventListener("mousemove", e => {
+        const mouse = eventToWorldCoords(e);
+        const current = player.posAtTime(gameState.lastT);
+        const d = current.sub(mouse);
+        const targetZero = mouse.add(d.scaleToLength(pointerRadius));
+        const move = targetZero.sub(current);
+        const tToStop = Math.sqrt(2 * move.norm() / player.decceleration);
+        player.zeroSpeedTime = gameState.lastT + tToStop;
+        player.zeroSpeedPos = targetZero;
+        player.shootingAngle = oppositeAngle(d.angle());
+        player.angle = oppositeAngle(player.shootingAngle);
+    });
+    window.addEventListener("keydown", e => {
+        if (e.key === "f") {
+            gameState.events.publishSnowball(Point.polar(1, player.shootingAngle));
+        }
+    });
+    // create small disk on which mouse pointer is not shown
+    const noCursor = svg("circle", {
+        id: "noCursor",
+        cx: -1234,
+        cy: -1234,
+        r: cursorRadius,
+        "fill": "white",
+        "fill-opacity": 0
+    }, []);
+    noCursor.style.cursor = "none";
+    I("arena").appendChild(noCursor);
+    I("pointerTriangle_" + gameState.myId).style.cursor = "none";
 }
 
 class GameState {
@@ -194,6 +276,7 @@ class GameState {
     setPlayerColor(playerId, color) {
         this.players.get(playerId).color = color;
         I("circ_" + playerId).setAttribute("fill", color);
+        I("pointerTriangle_" + playerId).setAttribute("fill", color);
     }
 
     addPlayer(playerId, color) {
@@ -208,6 +291,7 @@ class GameState {
             fill: color
         }, []);
         I("arena").appendChild(circ);
+
         const w = 0.2 * headRadius;
         const hitShade = svg("circle", {
             id: "hitShade_" + playerId, 
@@ -220,6 +304,13 @@ class GameState {
             "stroke-opacity": 0
         }, []);
         I("arena").appendChild(hitShade);
+
+        const pointerTriangle = svg("path", {
+            id: "pointerTriangle_" + playerId,
+            d: isoscelesTriangle(player.currentPos, pointerBaseWidth, player.shootingAngle, pointerRadius),
+            fill: color
+        });
+        I("arena").appendChild(pointerTriangle);
 
         const vid = document.createElement("video");
         vid.setAttribute("id", "video_" + playerId);
@@ -237,6 +328,7 @@ class GameState {
             I("circ_" + playerId).remove();
             I("hitShade_" + playerId).remove();
             I("video_" + playerId).remove();
+            I("pointerTriangle_" + playerId).remove();
             for (let snowball of player.snowballs) {
                 I("snowball_" + playerId + "_" + snowball.id).remove();
             }
@@ -319,7 +411,7 @@ class GameState {
             }
 
             const truePos = player.posAtTime(t);
-            positionPlayer(playerId, player.currentPos);
+            positionPlayer(playerId, player);
 
             const transparency = (t - player.lastHitTime) / this.hitAnimationLength;
             const hitShade = I("hitShade_" + playerId);
@@ -332,6 +424,8 @@ class GameState {
             }
             player.oldPos = truePos;
         }
+        const pointerTip = myPlayer.currentPos.add(Point.polar(pointerRadius, myPlayer.shootingAngle));
+        positionCircle(I("noCursor"), pointerTip);
         this.lastT = t;
     }
 
@@ -482,17 +576,9 @@ class PlayerPeer {
                     player.minusPoints = e.minusPoints;
                     this.gameState.updateRanking();
                 }
+                player.shootingAngle = e.shootingAngle;
                 this.gameState.setPlayerColor(this.id, e.color);
                 this.gameConnections.connectToNewPeers(e.peers);
-            } else if (e.type === "snowball") {
-                const snowball = new Snowball();
-                snowball.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
-                snowball.zeroSpeedTime = e.t0 - this.timeSeniority;
-                snowball.angle = e.angle;
-                snowball.id = e.id;
-                snowball.playerId = this.id;
-                snowball.birthTime = e.birthTime - this.timeSeniority;
-                this.gameState.addSnowball(snowball);
             } else {
                 // TODO refactor to handle all the above in `events` as well
                 this.gameState.events.processEvent(this.id, e);
@@ -531,12 +617,26 @@ class Events {
         this.playerPeers = playerPeers;
         this.gameState = gameState;
     }
+    publishSnowball(direction) {
+        const player = this.gameState.players.get(this.gameState.myId);
+        const snowball = new Snowball(player.posAtTime(this.gameState.lastT), player.freshSnowballId(), this.gameState.myId, this.gameState.lastT);
+        snowball.setSpeed(this.gameState.lastT, direction.scaleToLength(snowballSpeed));
+        this.publish(snowball.toJson());
+    }
     publish(e) {
         this.processEvent(this.gameState.myId, e);
         this.broadcastEvent(e);
     }
     processEvent(sourceId, e) {
         switch (e.type) {
+            case "snowball":
+                const snowball = Snowball.fromJson(e);
+                snowball.playerId = sourceId;
+                const timeSeniority = sourceId === this.gameState.myId ? 0 : this.playerPeers.get(sourceId).timeSeniority;
+                snowball.zeroSpeedTime -= timeSeniority;
+                snowball.birthTime -= timeSeniority;
+                this.gameState.addSnowball(snowball);
+                break;
             case "hit":
                 this.gameState.hit(e.shooter, sourceId/*source of event=target of ball*/, e.snowball);
                 break;
@@ -601,7 +701,7 @@ class GameConnections {
                             log.data(e);
                             const speed = new Point(e.speedX, e.speedY);
                             if (e.side === "left") {
-                                const adjustedSpeed = speed.norm() > 16 ? speed.scale(16 / speed.norm()) : speed;
+                                const adjustedSpeed = speed.norm() > 16 ? speed.scaleToLength(maxPlayerSpeed) : speed;
                                 this.gameState.setPlayerSpeed(this.myId, adjustedSpeed);
                                 this.broadcastTrajectory();
                             }
@@ -609,11 +709,7 @@ class GameConnections {
                                 const rechargeTime = 0.3; // we need that little time to create a new snowball
                                 if (this.gameState.lastT - lastThrowTime < rechargeTime || speed.norm() < 5) return;
                                 lastThrowTime = this.gameState.lastT;
-                                const player = this.gameState.players.get(this.myId);
-                                const snowball = new Snowball(player.posAtTime(this.gameState.lastT), player.freshSnowballId(), this.myId, this.gameState.lastT);
-                                snowball.setSpeed(this.gameState.lastT, speed.scale(16 / speed.norm())); // constant speed for now
-                                this.gameState.addSnowball(snowball);
-                                this.broadcastSnowball(snowball);
+                                this.gameState.events.publishSnowball(speed);
                             }
                         });
                         dataConn.on('close', () => {
@@ -636,16 +732,13 @@ class GameConnections {
                             const oldSpeed = player.speedAtTime(this.gameState.lastT);
                             const speed = dist.scale(1 / e.deltaT);
                             const newSpeed = oldSpeed.add(speed);
-                            const adjustedSpeed = newSpeed.norm() > maxPlayerSpeed ? newSpeed.scale(maxPlayerSpeed / newSpeed.norm()) : newSpeed;
+                            const adjustedSpeed = newSpeed.norm() > maxPlayerSpeed ? newSpeed.scaleToLength(maxPlayerSpeed) : newSpeed;
                             //nsole.log(oldSpeed.norm().toFixed(2), speed.norm().toFixed(2), adjustedSpeed.norm().toFixed(2));
                             this.gameState.setPlayerSpeed(this.myId, adjustedSpeed);
                             this.broadcastTrajectory();
                         }
                         if (e.side === "right") {
-                            const snowball = new Snowball(player.posAtTime(this.gameState.lastT), player.freshSnowballId(), this.myId, this.gameState.lastT);
-                            snowball.setSpeed(this.gameState.lastT, dist.scale(snowballSpeed / dist.norm())); // constant speed
-                            this.gameState.addSnowball(snowball);
-                            this.broadcastSnowball(snowball);
+                            this.gameState.events.publishSnowball(dist);
                         }
                     });
                     dataConn.on('close', () => {
@@ -711,18 +804,11 @@ class GameConnections {
         const m = player.trajectoryJson();
         // this is the kitchen sink message periodically providing all state managed by one player
         m.type = "trajectory";
+        m.shootingAngle = player.shootingAngle;
         m.plusPoints = player.plusPoints;
         m.minusPoints = player.minusPoints;
         m.color = player.color;
         m.peers = Array.from(this.playerPeers.keys());
-        this.broadcast(m);
-    }
-
-    broadcastSnowball(snowball) {
-        const m = snowball.trajectoryJson();
-        m.type = "snowball";
-        m.id = snowball.id;
-        m.birthTime = snowball.birthTime;
         this.broadcast(m);
     }
 
@@ -857,6 +943,8 @@ function init() {
     events.playerPeers = gco.playerPeers;
     events.gameState = gs;
 
+    initMouseMoveNavi(gs);
+
     I("activateCamera").onclick = () => {
         I("activateCamera").remove();
         navigator.mediaDevices.getUserMedia({
@@ -887,6 +975,9 @@ function init() {
             window.cancelAnimationFrame(handle);
         }
     });
+
+    window.addEventListener("resize", onResize);
+    onResize();
 }
 
 window.onload = init;
