@@ -1,0 +1,505 @@
+"use strict";
+
+class Tool {
+    constructor(gameState) {
+        this.gameState = gameState;
+    }
+    pointerdown(e) {
+        /*
+        this.gameState.events.publish({
+            type: "upd",
+            pos: event_to_world_coords(e),
+            animate: 'jump'
+        });
+        */
+    }
+    first_drag(e) {
+        throw "should be implemented by subclass";
+    }
+    continue_drag(e) {
+        throw "should be implemented by subclass";
+    }
+    end_drag(e) {
+        throw "should be implemented by subclass";
+    }
+}
+
+class NavigationTool extends Tool {
+    constructor(gameState) {
+        super(gameState);
+        // e.clientX/Y of last mouse event
+        this.last_clientX = null;
+        this.last_clientY = null;
+    }
+    pointerdown(e) {
+        super.pointerdown(e);
+        this.last_clientX = e.clientX;
+        this.last_clientY = e.clientY;
+    }
+    first_drag(e) {
+        this.move_impl(e);
+    }
+    continue_drag(e) {
+        this.move_impl(e);
+    }
+    end_drag(e) {}
+    move_impl(e) {
+        const dx = e.clientX - this.last_clientX;
+        const dy = e.clientY - this.last_clientY;
+        this.last_clientX = e.clientX;
+        this.last_clientY = e.clientY;
+        this.gameState.events.publish({
+            type: "upd",
+            view: {x: this.gameState.myPlayer.view.x + dx, y: this.gameState.myPlayer.view.y + dy}
+        }, true);
+    }
+}
+
+class PointingTool extends Tool {
+    constructor(gameState) {
+        super(gameState);
+        this.avatarPosBeforeLastJump = null;
+    }
+    pointerdown(e) {
+        this.avatarPosBeforeLastJump = app.myAvatar.pos;
+        this.gameState.events.publish({
+            type: "upd",
+            pos: event_to_world_coords(e),
+            animate: 'line'
+        });
+    }
+    first_drag(e) {
+        this.gameState.events.publish({
+            type: "upd",
+            pos: event_to_world_coords(e),
+            pointer: event_to_world_coords(e).sub(this.avatarPosBeforeLastJump).angle() / Math.PI * 180
+        });
+    }
+    continue_drag(e) {
+        this.gameState.events.publish({
+            type: "upd",
+            pos: event_to_world_coords(e),
+        });
+    }
+    end_drag(e) {
+        this.gameState.events.publish({
+            type: "upd",
+            pointer: "none"
+        });
+    }
+}
+
+class ShapeTool extends Tool {
+    constructor(gameState) {
+        super(gameState);
+        // world coordinates of the last pointerdown event
+        this.pointerDownPos = null;
+    }
+    pointerdown(e) {
+        this.pointerDownPos = event_to_world_coords(e);
+        super.pointerdown(e);
+    }
+    first_drag(e) {
+        const p = event_to_world_coords(e);
+        if (selectedElemId) {
+            this.gameState.events.publish({
+                type: "deselect",
+                what: [selectedElemId]
+            });
+            selectedElemId = null;
+        }
+        this.move_avatar_to_shape_corner(p);
+        const s = create_shape(activeTool, this.pointerDownPos, p);
+        s.action = 'new';
+        if (activeTool === 'rectangle') {
+            s.tag = 'rect';
+        } else {
+            s.tag = 'path';
+        }
+        s.id = app.gen_elem_id(s.tag);
+        // s.stroke = I("pick-stroke-color").style.backgroundColor;
+        s.fill = I("pick-fill-color").style.backgroundColor;
+        this.gameState.events.publish(s);
+        selectedElemId = s.id;
+        this.gameState.events.publish({
+            type: "select",
+            what: [selectedElemId]
+        });
+    }
+    continue_drag(e) {
+        const p = event_to_world_coords(e);
+        this.move_avatar_to_shape_corner(p);
+        const s = create_shape(activeTool, this.pointerDownPos, p);
+        s.action = 'upd';
+        s.id = selectedElemId;
+        this.gameState.events.publish(s);
+    }
+    end_drag(e) {
+        this.gameState.events.publish({
+            type: "upd",
+            pointer: "none"
+        });
+    }
+    // "private"
+    move_avatar_to_shape_corner(p) {
+        const d = p.distanceTo(this.pointerDownPos) + Avatar.pointerRadius;
+        const alpha = p.sub(this.pointerDownPos).angle();
+        this.gameState.events.publish({
+            type: "upd",
+            pos: this.pointerDownPos.add(Point.polar(d, alpha)),
+            pointer: alpha / Math.PI * 180 + 180
+        });
+    }
+}
+
+// TODO merge with ShapeTool
+class BlobTool extends Tool {
+    constructor(gameState) {
+        super(gameState);
+        this.allPoints = null;
+    }
+    pointerdown(e) {
+        this.allPoints = [event_to_world_coords(e)];
+        super.pointerdown(e);
+    }
+    first_drag(e) {
+        const p = event_to_world_coords(e);
+        if (selectedElemId) {
+            this.gameState.events.publish({
+                type: "deselect",
+                what: [selectedElemId]
+            });
+            selectedElemId = null;
+        }
+        this.move_avatar_to_shape_corner(p);
+        this.allPoints.push(p);
+        const s = points_to_path(this.allPoints);
+        s.action = 'new';
+        s.tag = 'path';
+        s.id = app.gen_elem_id(s.tag);
+        s.fill = 'transparent';
+        s.stroke = app.myAvatar.color;
+        s["stroke-width"] = 2;
+        this.gameState.events.publish(s);
+        selectedElemId = s.id;
+        this.gameState.events.publish({
+            type: "select",
+            what: [selectedElemId]
+        });
+    }
+    continue_drag(e) {
+        const p = event_to_world_coords(e);
+        this.move_avatar_to_shape_corner(p);
+        this.allPoints.push(p);
+        const s = points_to_path(this.filter_points());
+        s.action = 'upd';
+        s.id = selectedElemId;
+        this.gameState.events.publish(s);
+    }
+    end_drag(e) {
+        this.gameState.events.publish([{
+            type: "upd",
+            pointer: "none"
+        }, {
+            type: 'upd',
+            id: selectedElemId,
+            "stroke-width": 0,
+            "fill": I("pick-fill-color").style.backgroundColor
+        }]);
+        this.allPoints = null;
+    }
+    // "private"
+    // removes points which are old && useless from allPoints, and returns an
+    // even more filtered list where all useless points were removed
+    filter_points() {
+        const keep = Array(this.allPoints.length).fill(true);
+        var best = null;
+        do {
+            best = null;
+            var lowestDist = handle_radius(); // don't remove points with a dist larger than this
+            var prev = 0; // point 0 is always kept
+            var cur = 1;
+            while (cur < this.allPoints.length && !keep[cur]) cur++;
+            var next = cur + 1;
+            while (next < this.allPoints.length && !keep[next]) next++;
+            while (next < this.allPoints.length) {
+                // prev,cur,next are three points with keep[..] == true
+                const dist = dist_from_line(this.allPoints[cur], this.allPoints[prev], this.allPoints[next]);
+                if (dist < lowestDist) {
+                    lowestDist = dist;
+                    best = cur;
+                }
+                prev = cur;
+                cur = next;
+                do { next++; } while (next < this.allPoints.length && !keep[next]);
+            }
+            if (best !== null) keep[best] = false;
+        } while (best !== null);
+        const res = [];
+        const upd = [];
+        for (let i = 0; i < this.allPoints.length; i++) {
+            if (keep[i] || this.allPoints.length - i <= 100) { // keep last 100 points no matter what
+                upd.push(this.allPoints[i]);
+            }
+            if (keep[i]) {
+                res.push(this.allPoints[i]);
+            }
+        }
+        this.allPoints = upd;
+        return res;
+    }
+    move_avatar_to_shape_corner(p) {
+        // last point might be too noisy, go back a bit further:
+        let i = this.allPoints.length-1;
+        while (i > 0 && p.distanceTo(this.allPoints[i]) < 2 * Avatar.radius) i--; // TODO respect scale
+        const prev = this.allPoints[i];
+        const d = p.distanceTo(prev) + Avatar.pointerRadius;
+        const alpha = p.sub(prev).angle();
+        this.gameState.events.publish({
+            type: "upd",
+            pos: prev.add(Point.polar(d, alpha)),
+            pointer: alpha / Math.PI * 180 + 180
+        });
+    }
+}
+
+// possible values: any member name of the tools object above
+var activeTool = "navigation";
+
+var selectedElemId = null;
+
+// We use the term "pointer" to refer to the mouse pointer on desktop, and the finger on mobile/tablets
+class PointerEvents {
+    constructor(gameState) {
+        // This variable behaves like the following state machine:
+        //
+        //           v
+        //       +-> UP ----pointerdown----+
+        //       |    ^                    |
+        //       |    |                    v
+        //       |    +-----pointerup---- DOWN
+        //       |                         |
+        //       |                         |
+        //     DRAGGING <---pointermove----+
+        //    ^        \
+        //   /          \
+        //  +-pointermove+
+        //
+        this.pointerState = "UP";
+        this.tools = {
+            navigation: new NavigationTool(gameState),
+            pointing: new PointingTool(gameState),
+            rectangle: new ShapeTool(gameState),
+            triangle: new ShapeTool(gameState),
+            square: new ShapeTool(gameState),
+            blob: new BlobTool(gameState)
+        };
+        this._draggee = null; // can be null, "handle" or "tool"
+        this.onadjustcorner = null;
+    }
+    get draggee() {
+        return this._draggee;
+    }
+    set draggee(v) {
+        log.debug("draggee:", v);
+        this._draggee = v;
+    }
+    pointerdown_on_map(e) {
+        this.tools[activeTool].pointerdown(e);
+        this.draggee = "tool";
+        this.pointerdown_common(e);
+    }
+    // elem: DOM SVG element being edited
+    // cornerPos: original world coordinates of the corner being edited
+    // geomUpdater: function which takes a Point with the new corner coordinates
+    //              and returns a JSON action to update elem
+    pointerdown_on_corner_handle(elem, cornerPos, geomUpdater) {
+        return (e) => {
+            const p = event_to_world_coords(e);
+            const mouseDownPosWithinHandle = p.sub(cornerPos);
+            const alpha = mouseDownPosWithinHandle.angle();
+            const avatarOffset = Point.polar(Avatar.pointerRadius, alpha);
+            this.gameState.events.publish({
+                type: "upd",
+                pos: p.add(avatarOffset),
+                animate: 'jump'
+            });
+            this.onadjustcorner = (e) => {
+                const p = event_to_world_coords(e);
+                this.gameState.events.publish([{
+                    type: "upd",
+                    pos: p.add(avatarOffset),
+                    pointer: alpha / Math.PI * 180 + 180
+                }, geomUpdater(p.sub(mouseDownPosWithinHandle))]);
+            };
+            this.draggee = "handle";
+            this.pointerdown_common(e);
+            e.stopPropagation();
+        };
+    }
+    pointerdown_common(e) {
+        this.pointerState = "DOWN";
+        set_corner_handle_cursor("none");
+        //set_cursor("none");
+    }
+    pointermove(e) {
+        if (this.pointerState === "UP") return; // mousedown happened somewhere else
+        switch (this.draggee) {
+        case "tool":
+            switch (this.pointerState) {
+            case "DOWN":
+                this.tools[activeTool].first_drag(e);
+                this.pointerState = "DRAGGING";
+                break;
+            case "DRAGGING":
+                this.tools[activeTool].continue_drag(e);
+                break;
+            }
+            break;
+        case "handle":
+            this.onadjustcorner(e);
+            break;
+        }
+    }
+    pointerup(e) {
+        if (this.pointerState === "UP") return; // mousedown happened somewhere else
+        switch (this.draggee) {
+        case "tool":
+            if (this.pointerState === "DRAGGING") this.tools[activeTool].end_drag(e);
+            break;
+        case "handle":
+            this.gameState.events.publish({
+                type: "upd",
+                pointer: "none"
+            });
+            this.onadjustcorner = null;
+            break;
+        }
+        this.pointerState = "UP";
+        set_cursor_for_active_tool();
+        set_corner_handle_cursor("move");
+    }
+}
+
+function set_corner_handle_cursor(name) {
+    const l = I("arena").classList;
+    for (const c of l) {
+        if (c.startsWith("set_corner_handle_cursors_to_")) {
+            l.remove(c);
+        }
+    }
+    l.add("set_corner_handle_cursors_to_" + name);
+}
+
+function set_cursor_for_active_tool() {
+    switch (activeTool) {
+    case "navigation":
+        //set_cursor("grab");
+        set_cursor("default");
+        break;
+    case "pointing":
+        set_cursor("default");
+        break;
+    case "square":
+    case "rectangle":
+    case "triangle":
+        set_cursor("crosshair");
+        break;
+    case "blob":
+        set_cursor("default");
+        break;
+    default:
+        throw 'unknown tool'
+    }
+}
+
+function toolbutton_click(e) {
+    for (const toolBtn of I("Tools").children) {
+        toolBtn.classList.remove("ActiveTool");
+    }
+    const id = e.currentTarget.id;
+    if (!id.endsWith("-tool")) throw 'unexpected tool id';
+    activeTool = id.substr(0, id.length-5);
+    e.currentTarget.classList.add("ActiveTool");
+    set_cursor_for_active_tool();
+}
+
+function shape_contextmenu(e) {
+    const elem = e.target;
+    const clickedElemId = elem.getAttribute("id");
+    const previouslySelected = selectedElemId;
+    var m = [];
+
+    // in any case, deselect whatever's currently selected
+    if (previouslySelected) {
+        m.push({
+            type: "deselect",
+            what: [previouslySelected]
+        });
+        selectedElemId = null;
+    }
+
+    // if a different element than the previously selected one was clicked, select it,
+    // else only the above deselect is needed
+    if (previouslySelected !== clickedElemId) {
+        selectedElemId = clickedElemId;
+        const c = I(selectedElemId).getAttribute("fill");
+        if (!c.startsWith('url')) I("pick-fill-color").style.backgroundColor = c;
+        m.push({
+            type: "select",
+            what: [selectedElemId]
+        });
+    }
+
+    this.gameState.events.publish(m);
+}
+
+function background_contextmenu(e) {
+    if (selectedElemId) {
+        this.gameState.events.publish({
+            type: "deselect",
+            what: [selectedElemId]
+        });
+        selectedElemId = null;
+    }
+    const c = I("BackgroundRect").getAttribute("fill");
+    if (!c.startsWith('url')) I("pick-fill-color").style.backgroundColor = c;
+}
+
+const MOUSEBUTTONS_LEFT = 1;
+
+let pointerEventsHandler = null;
+
+function mousedown_corner_handle(elem, cornerPos, geomUpdater) {
+    return pointerEventsHandler.pointerdown_on_corner_handle(elem, cornerPos, geomUpdater);
+}
+
+let cursor_debug = false;
+
+function set_cursor(name) {
+    if (cursor_debug && name === "none") name = "crosshair";
+    I("arena").style.cursor = name;
+}
+
+function init_uievents(gameState) {
+    pointerEventsHandler = new PointerEvents(gameState);
+    I("arenaWrapper").onpointerdown = (e) => {
+        if (e.buttons !== MOUSEBUTTONS_LEFT) return;
+        pointerEventsHandler.pointerdown_on_map(e);
+    };
+    window.addEventListener('pointermove', (e) => {
+        if (e.buttons !== MOUSEBUTTONS_LEFT) return;
+        pointerEventsHandler.pointermove(e);
+    });
+    // TODO what if multiple mouse buttons are pressed?
+    window.addEventListener('pointerup', (e) => {
+        pointerEventsHandler.pointerup(e);
+    });
+    // never show the browser's context menu (also prevents the browser context menu on long taps)
+    window.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+    // I("BackgroundRect").oncontextmenu = background_contextmenu;
+    set_cursor_for_active_tool();
+    set_corner_handle_cursor("move");
+}
