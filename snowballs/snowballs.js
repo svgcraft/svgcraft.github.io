@@ -197,19 +197,7 @@ function svg(tag, attrs, children, allowedAttrs) {
     return res;
 }
 
-function initMouseMoveNavi(gameState) {
-    I("arenaWrapper").addEventListener("mousemove", e => {
-        const mouse = gameState.eventToWorldCoords(e);
-        const current = gameState.myPlayer.posAtTime(gameState.lastT);
-        const d = current.sub(mouse);
-        const targetZero = mouse.add(d.scaleToLength(pointerRadius));
-        const move = targetZero.sub(current);
-        const tToStop = Math.sqrt(2 * move.norm() / gameState.myPlayer.decceleration);
-        gameState.myPlayer.zeroSpeedTime = gameState.lastT + tToStop;
-        gameState.myPlayer.zeroSpeedPos = targetZero;
-        gameState.myPlayer.shootingAngle = oppositeAngle(d.angle());
-        gameState.myPlayer.angle = oppositeAngle(gameState.myPlayer.shootingAngle);
-    });
+function initMiscEvents(gameState) {
     window.addEventListener("keydown", e => {
         if (e.repeat) return;
         if (e.key === "f" && gameState.showPointers) {
@@ -582,11 +570,6 @@ class GameState {
     }
 }
 
-function makeControllerLink(myId) {
-    const folder = `${window.location.protocol}//${window.location.host}${window.location.pathname.replace("/index.html", "")}`;
-    return `${folder}/swipepad.html?connectTo=${myId}`;
-}
-
 class PlayerPeer {
     constructor(id, gameState, gameConnections) {
         this.id = id;
@@ -668,26 +651,7 @@ class PlayerPeer {
                         this.lostPacketCount++;
                     }
                 }
-            } else if (e.type === "trajectory") {
-                const player = this.gameState.players.get(this.id);
-                player.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
-                player.zeroSpeedTime = e.t0 - this.timeSeniority;
-                player.angle = e.angle;
-                if (e.plusPoints !== player.plusPoints) {
-                    log.state(`setting ${this.id}.plusPoints (currently ${player.plusPoints}) to ${e.plusPoints}`);
-                    player.plusPoints = e.plusPoints;
-                    this.gameState.updateRanking();
-                }
-                if (e.minusPoints !== player.minusPoints) {
-                    log.state(`setting ${this.id}.minusPoints (currently ${player.minusPoints}) to ${e.minusPoints}`);
-                    player.minusPoints = e.minusPoints;
-                    this.gameState.updateRanking();
-                }
-                player.shootingAngle = e.shootingAngle;
-                this.gameState.setPlayerColor(this.id, e.color);
-                this.gameConnections.connectToNewPeers(e.peers);
             } else {
-                // TODO refactor to handle all the above in `events` as well
                 this.gameState.events.processEvent(this.id, e);
             }
         });
@@ -757,7 +721,12 @@ class Events {
         this.processEvent(this.gameState.myId, e);
         this.broadcastEvent(e);
     }
+    get gameConnections() {
+        // all PlayerPeers link to the same GameConnections object, TODO maybe there's a nicer way to access it?
+        return this.playerPeers.values().next().value.gameConnections;
+    }
     processEvent(sourceId, e) {
+        const timeSeniority = sourceId === this.gameState.myId ? 0 : this.playerPeers.get(sourceId).timeSeniority;
         switch (e.type) {
             case "upd":
                 if (e.view) {
@@ -772,13 +741,31 @@ class Events {
             case "snowball":
                 const snowball = Snowball.fromJson(e);
                 snowball.playerId = sourceId;
-                const timeSeniority = sourceId === this.gameState.myId ? 0 : this.playerPeers.get(sourceId).timeSeniority;
                 snowball.zeroSpeedTime -= timeSeniority;
                 snowball.birthTime -= timeSeniority;
                 this.gameState.addSnowball(snowball);
                 break;
             case "hit":
                 this.gameState.hit(e.shooter, sourceId/*source of event=target of ball*/, e.snowball);
+                break;
+            case "trajectory":
+                const player = this.gameState.players.get(sourceId);
+                player.zeroSpeedPos = new Point(parseFloat(e.x0), parseFloat(e.y0));
+                player.zeroSpeedTime = e.t0 - timeSeniority;
+                player.angle = e.angle;
+                if (e.plusPoints !== undefined && e.plusPoints !== player.plusPoints) {
+                    log.state(`setting ${sourceId}.plusPoints (currently ${player.plusPoints}) to ${e.plusPoints}`);
+                    player.plusPoints = e.plusPoints;
+                    this.gameState.updateRanking();
+                }
+                if (e.minusPoints !== undefined && e.minusPoints !== player.minusPoints) {
+                    log.state(`setting ${sourceId}.minusPoints (currently ${player.minusPoints}) to ${e.minusPoints}`);
+                    player.minusPoints = e.minusPoints;
+                    this.gameState.updateRanking();
+                }
+                player.shootingAngle = e.shootingAngle;
+                if (e.color !== undefined) this.gameState.setPlayerColor(sourceId, e.color);
+                if (e.peers !== undefined) this.gameConnections.connectToNewPeers(e.peers);
                 break;
             default:
                 throw `Unknown event type ${e.type} (or event type that should be handled elsewhere)`;
@@ -808,7 +795,6 @@ class GameConnections {
 
         this.peer.on('open', (id) => {
             log.connection("PeerJS server gave us ID " + id);
-            log.connection("Controller link to use on your phone:", makeControllerLink(id));
             log.connection("Waiting for peers to connect");
         });
     
@@ -825,66 +811,6 @@ class GameConnections {
                     }
                     pp.setDataConn(dataConn);
                     break;
-                case "touchpad":
-                    if (this.hasTouchpadPeer) {
-                        log.connection("Rejecting touchpad connection because there already is one");
-                        dataConn.close();
-                    } else {
-                        log.connection("Connected to touchpad " + dataConn.peer);
-                        this.hasTouchpadPeer = true;
-                        dataConn.on('open', () => {
-                            log.connection("Connection to touchpad " + dataConn.peer + " open");
-                        });
-                        let lastThrowTime = Number.NEGATIVE_INFINITY; // TODO remove once we only react to swipe events
-                        dataConn.on('data', e => {
-                            log.data(`data received from ${dataConn.peer}`);
-                            log.data(e);
-                            const speed = new Point(e.speedX, e.speedY);
-                            if (e.side === "left") {
-                                const adjustedSpeed = speed.norm() > 16 ? speed.scaleToLength(maxPlayerSpeed) : speed;
-                                this.gameState.setPlayerSpeed(this.myId, adjustedSpeed);
-                                this.broadcastTrajectory();
-                            }
-                            if (e.side === "right") {
-                                const rechargeTime = 0.3; // we need that little time to create a new snowball
-                                if (this.gameState.lastT - lastThrowTime < rechargeTime || speed.norm() < 5) return;
-                                lastThrowTime = this.gameState.lastT;
-                                this.gameState.events.publishSnowball(speed);
-                            }
-                        });
-                        dataConn.on('close', () => {
-                            log.connection(`Connection to touchpad ${dataConn.peer} closed`);
-                            this.hasTouchpadPeer = false;
-                        });
-                    }
-                    break;
-                case "swipepad":
-                    log.connection("Connected to swipepad " + dataConn.peer);
-                    dataConn.on('open', () => {
-                        log.connection("Connection to swipepad " + dataConn.peer + " open");
-                    });
-                    dataConn.on('data', e => {
-                        log.data(`data received from ${dataConn.peer}`);
-                        log.data(e);
-                        const dist = new Point(e.deltaX * movementScale, e.deltaY * movementScale);
-                        const player = this.gameState.players.get(this.myId);
-                        if (e.side === "left") {
-                            const oldSpeed = player.speedAtTime(this.gameState.lastT);
-                            const speed = dist.scale(1 / e.deltaT);
-                            const newSpeed = oldSpeed.add(speed);
-                            const adjustedSpeed = newSpeed.norm() > maxPlayerSpeed ? newSpeed.scaleToLength(maxPlayerSpeed) : newSpeed;
-                            //nsole.log(oldSpeed.norm().toFixed(2), speed.norm().toFixed(2), adjustedSpeed.norm().toFixed(2));
-                            this.gameState.setPlayerSpeed(this.myId, adjustedSpeed);
-                            this.broadcastTrajectory();
-                        }
-                        if (e.side === "right") {
-                            this.gameState.events.publishSnowball(dist);
-                        }
-                    });
-                    dataConn.on('close', () => {
-                        log.connection(`Connection to swipepad ${dataConn.peer} closed`);
-                    });
-                    break;                    
                 default:
                     log.connection("Rejecting connection of unknown type " + dataConn.metadata?.type);
                     dataConn.close();
@@ -1087,7 +1013,7 @@ function init() {
     events.playerPeers = gco.playerPeers;
     events.gameState = gs;
 
-    initMouseMoveNavi(gs);
+    initMiscEvents(gs);
     gs.adaptViewToPlayerPos();
 
     const videoRes = urlParams.get("videoRes") || 240;
