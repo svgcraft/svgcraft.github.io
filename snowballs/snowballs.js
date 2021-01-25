@@ -89,7 +89,6 @@ class Player extends DecceleratingObject {
         this.oldPos = initialPos;
         this.color = color;
         
-        this.nextFreshSnowballId = 0;
         this.snowballs = new Map();
         this.pointerAngle = 0;
 
@@ -99,6 +98,14 @@ class Player extends DecceleratingObject {
         this.plusPoints = 0;
 
         this.tool = "navigation";
+
+        this.tongsRadius = pointerRadius;
+        // relative to pointerAngle
+        this.maxTongAngle = Math.PI / 20;
+        this.leftTongAngle = this.maxTongAngle;
+        this.rightTongAngle = this.maxTongAngle;
+        this.draggee = null;
+        this.relDraggeePos = null;
 
         this.view = {
             // position of svg origin on the screen, in px
@@ -111,11 +118,16 @@ class Player extends DecceleratingObject {
             h: 900
         };
     }
-    freshSnowballId() {
-        return this.nextFreshSnowballId++;
-    }
     get decceleration() {
         return playerDecceleration;
+    }
+    state_upd() {
+        const m = {
+            type: "upd"
+        };
+        transferAttrsToObj(this, ["view", "tool", "maxTongAngle", "leftTongAngle", "rightTongAngle", "tongsRadius", "relDraggeePos"], m);
+        if (this.draggee) m.draggee = this.draggee.id;
+        return m;
     }
 }
 
@@ -124,7 +136,7 @@ let snowballDecceleration = 4;
 class Snowball extends DecceleratingObject {
     constructor(initialPos, id, playerId, birthTime) {
         super(initialPos);
-        this.id = id; // each player numbers the snowballs it throws 0, 1, 2, ...
+        this.id = id; // a globally unique string id
         this.playerId = playerId;
         this.birthTime = birthTime;
     }
@@ -153,13 +165,13 @@ class Snowball extends DecceleratingObject {
 
 const headRadius = 0.5;
 const snowballRadius = 0.13;
-const toolDist = 0.1; // distance between head and tools, and between tools
-const toolRadius = 0.2;
-const toolDistAngle = Math.asin((toolDist/2 + toolRadius) / (headRadius + toolDist + toolRadius)) * 2;
 // "pointer" is the triangle pointing out of the head, whereas "cursor" is the mouse position
 const pointerRadius = headRadius * 1.9;
 const pointerBaseWidth = headRadius * 1.6;
 const cursorRadius = 0.1;
+const toolRadius = 0.25;
+const toolDist = pointerRadius - headRadius - toolRadius; // distance between head and tools, and between tools
+const toolDistAngle = Math.asin((toolDist/2 + toolRadius) / (headRadius + toolDist + toolRadius)) * 2;
 const viewBoundaryWidth = 0.2;
 
 let playerStartPos = null;
@@ -180,11 +192,16 @@ function positionVector(dom, start, direction) {
     dom.setAttribute("y2", target.y);
 }
 
+// l: list of string or Point
+function pathStr(l) {
+    return l.map(e => typeof(e) === "string" ? e : e.x + " " + e.y).join(" ");
+}
+
 function isoscelesTriangle(baseMid, baseLength, rotation, height) {
     const tip = baseMid.add(Point.polar(height, rotation));
     const p1 = baseMid.add(Point.polar(baseLength/2, rotation + Math.PI/2));
     const p2 = baseMid.add(Point.polar(baseLength/2, rotation - Math.PI/2));
-    return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${tip.x} ${tip.y} z`;
+    return pathStr(["M", p1, "L", p2, "L", tip, "z"]);
 }
 
 function svg(tag, attrs, children, allowedAttrs) {
@@ -206,12 +223,11 @@ function initMiscEvents(gameState) {
     I("arenaWrapper").addEventListener("wheel", e => {
         e.preventDefault();
         const zoomChange = Math.exp(e.deltaY * -0.001);
-        const center = gameState.worldToPixelCoords(gameState.myPlayer.currentPos);
         gameState.events.publish({
             type: "upd",
             view: {
-                x: center.x - (center.x - gameState.myPlayer.view.x) * zoomChange,
-                y: center.y - (center.y - gameState.myPlayer.view.y) * zoomChange,
+                x: e.clientX - (e.clientX - gameState.myPlayer.view.x) * zoomChange,
+                y: e.clientY - (e.clientY - gameState.myPlayer.view.y) * zoomChange,
                 scale: gameState.myPlayer.view.scale * zoomChange
             }
         });
@@ -222,6 +238,24 @@ function initMiscEvents(gameState) {
     }
     window.addEventListener("resize", onResize);
     onResize();
+}
+
+const styleAttrs = ["stroke", "stroke-width", "stroke-linejoin", "stroke-linecap", "fill", "fill-opacity"];
+const positionAttrs = ["cx", "cy", "r", "rx", "ry", "d", "x", "y", "x1", "y1", "x2", "y2", "width", "height"];
+const gAttrs = ["x0", "y0", "scale"];
+const updatableSvgAttrs = styleAttrs.concat(positionAttrs);
+const updatableAttrs = updatableSvgAttrs.concat(gAttrs);
+
+function transferAttrsToDom(j, attrs, target) {
+    for (const attr of attrs) {
+        if (j[attr] !== undefined) target.setAttribute(attr, j[attr]);
+    }
+}
+
+function transferAttrsToObj(j, attrs, target) {
+    for (const attr of attrs) {
+        if (j[attr] !== undefined) target[attr] = j[attr];
+    }
 }
 
 class GameState {
@@ -236,6 +270,59 @@ class GameState {
         // and v is the vector pointing from a to the line segment's end point
         this.bounceLines = bounceLines;
         this.events = events;
+        this.nextFreshId = 0;
+        this.objects = new Map();
+    }
+
+    update(e) {
+        const parent = I(e.parent);
+        if (parent === undefined) {
+            log.state(`Ignoring object because its parent ${e.parent} was not found`, e);
+            return;
+        }
+        let o = this.objects.get(e.id);
+        let d = I(e.id) ?? undefined;
+        if ((o === undefined) != (d === undefined)) throw 'GameState.objects and DOM got out of sync';
+        const needsG = e.type === "rect" || e.type === "circle";
+        if (o === undefined) {
+            o = { type: e.type, id: e.id, scale: 1, parent: e.parent };
+            this.objects.set(o.id, o);
+            if (needsG) {
+                d = svg(e.type);
+                const g = svg("g", { id: e.id }, [d]);
+                parent.appendChild(g)
+            } else {
+                d = svg(e.type, { id: e.id });
+                parent.appendChild(d);
+            }
+        } else {
+            if (needsG) d = d.children[0];
+        }
+        transferAttrsToObj(e, updatableAttrs, o);
+        transferAttrsToDom(o, updatableSvgAttrs, d);
+        if (needsG) {
+            d.parentNode.setAttribute("transform", `translate(${o.x0}, ${o.y0}) scale(${o.scale})`);
+        }
+    }
+
+    absCoordsIn(x, y, id) {
+        if (id === "objects") return new Point(x, y);
+        const o = this.objects.get(id);
+        return this.absCoordsIn(x * o.scale + o.x0, y * o.scale + o.y0, o.parent);
+    }
+
+    absCoords(o) {
+        return this.absCoordsIn(o.x0, o.y0, o.parent);
+    }
+
+    absLengthIn(l, id) {
+        if (id === "objects") return l;
+        const o = this.objects.get(id);
+        return this.absLengthIn(l * o.scale, o.parent);
+    }
+
+    freshId() {
+        return `${this.myId}_${this.nextFreshId++}`;
     }
 
     get myPlayer() {
@@ -255,6 +342,10 @@ class GameState {
                 stop.setAttribute("stop-color", color);
             }
         }
+        // TODO for modularity, this code should be in each tool
+        I("pointerTriangle_" + playerId)?.setAttribute("fill", color);
+        I("leftTongTriangle_" + playerId)?.setAttribute("fill", color);
+        I("rightTongTriangle_" + playerId)?.setAttribute("fill", color);
     }
 
     encodeTransform() {
@@ -304,7 +395,7 @@ class GameState {
             r: headRadius,
             fill: color
         }, []);
-        I("arena").appendChild(circ);
+        I("players").appendChild(circ);
 
         const w = 0.2 * headRadius;
         const hitShade = svg("circle", {
@@ -317,7 +408,7 @@ class GameState {
             "stroke": "black",
             "stroke-opacity": 0
         }, []);
-        I("arena").appendChild(hitShade);
+        I("players").appendChild(hitShade);
 
         for (let i = 0; i < 4; i++) {
             const flip = Math.floor((i + 1) % 4 / 2);
@@ -330,14 +421,13 @@ class GameState {
                 svg("stop", { offset: "100%", "stop-color": color, "stop-opacity": dontFlip * 0.7 })
             ])
             I("arenaDefs").appendChild(gradient);
-            I("arena").appendChild(svg("polygon", { id: `viewBound${i}_${playerId}`, class: "viewBound", fill: `url(#gradient${i}_${playerId})` }));
+            I("players").appendChild(svg("polygon", { id: `viewBound${i}_${playerId}`, class: "viewBound", fill: `url(#gradient${i}_${playerId})` }));
         }
 
         const vid = document.createElement("video");
         vid.setAttribute("id", "video_" + playerId);
         vid.setAttribute("autoplay", "autoplay");
         vid.style.position = "absolute";
-        vid.style.cursor = "none";
         vid.style.clipPath = "url(#clipVideo)";
         vid.style.transform = "rotateY(180deg)";
         I("arenaWrapper").appendChild(vid);
@@ -352,7 +442,7 @@ class GameState {
             I("hitShade_" + playerId).remove();
             I("video_" + playerId).remove();
             for (let snowball of player.snowballs) {
-                I("snowball_" + playerId + "_" + snowball.id).remove();
+                I(snowball.id).remove();
             }
             for (let i = 0; i < 4; i++) {
                 I(`gradient${i}_${playerId}`).remove();
@@ -386,18 +476,38 @@ class GameState {
         positionCircle(I("circ_" + playerId), player.currentPos);
         window.uiEventsHandler.tools[player.tool].positionFor(playerId);
         this.positionElem(I("video_" + playerId), player.currentPos.x - headRadius, player.currentPos.y - headRadius, 2 * headRadius, 2 * headRadius);
+        if (player.draggee) {
+            this.positionObj(player.draggee, player.currentPos.add(player.relDraggeePos));
+        }
+    }
+
+    positionObj(o, absPos) {
+        this.applyAbsCoordsRelatively(o.parent, (x, y) => {
+            o.x0 = x;
+            o.y0 = y;
+            I(o.id).setAttribute("transform", `translate(${o.x0}, ${o.y0}) scale(${o.scale})`);
+        })(absPos.x, absPos.y);
     }
     
+    applyAbsCoordsRelatively(anchor, f) {
+        if (anchor === "objects") {
+            return f;
+        } else {
+            const anchorO = this.objects.get(anchor);
+            return this.applyAbsCoordsRelatively(anchorO.parent, (x, y) => f((x - anchorO.x0)/anchorO.scale, (y - anchorO.y0)/anchorO.scale));
+        }
+    }
+
     addSnowball(snowball) {
         this.players.get(snowball.playerId).snowballs.set(snowball.id, snowball);
         const circ = svg("circle", {
-            id: "snowball_" + snowball.playerId + "_" + snowball.id, 
+            id: snowball.id, 
             cx: -1234,
             cy: -1234,
             r: snowballRadius,
             fill: "white"
         }, []);
-        I("arena").appendChild(circ);
+        I("players").appendChild(circ);
     }
 
     hit(shooterId, targetId, snowballId) {
@@ -410,7 +520,7 @@ class GameState {
         // while the packet from the target peer that tells us that the target peer has been hit
         // was in flight, the snowball speed might have reached zero or hit a wall and therefore
         // might already have been removed
-        if (shooter.snowballs.delete(snowballId)) I("snowball_" + shooterId + "_" + snowballId).remove();
+        if (shooter.snowballs.delete(snowballId)) I(snowballId).remove();
         this.updateRanking();
     }
 
@@ -448,7 +558,7 @@ class GameState {
                 const p0 = snowball.posAtTime(snowball.birthTime);
                 const traveled = p.sub(p0);
                 const v = snowball.speedAtTime(t).norm();
-                const dom = I("snowball_" + snowball.playerId + "_" + snowball.id);
+                const dom = I(snowball.id);
                 positionCircle(dom, p);
                 // we only compute whether a snowball hits ourselves, because each peer computes & broadcasts its own hits
                 const hit = playerId !== this.myId && snowball.hits(myPlayer, t, dt, headRadius + snowballRadius);
@@ -548,11 +658,12 @@ class PlayerPeer {
         gameState.addPlayer(id, "black");
     }
 
-    setDataConn(dataConn) {
+    setDataConn(dataConn, requestDump) {
         this.dataConn = dataConn;
         dataConn.on('open', () => {
             log.connection("Connection to " + dataConn.peer + " open");
-            this.gameState.events.publish({ type: "upd", view: this.gameState.myPlayer.view } );
+            this.send(this.gameState.myPlayer.state_upd()); // TODO move more "trajectory" kitchen sink data here
+            if (requestDump) this.send({ type: "getdump" });
         });
         dataConn.on('data', e => {
             log.data(`data received from ${dataConn.peer}`);
@@ -607,6 +718,8 @@ class PlayerPeer {
                         this.lostPacketCount++;
                     }
                 }
+            } else if (e.type === "getdump") {
+                this.send(Array.from(this.gameState.objects.values()));
             } else {
                 this.gameState.events.processEvent(this.id, e);
             }
@@ -666,7 +779,7 @@ class Events {
     }
     publishSnowball(direction) {
         const player = this.gameState.players.get(this.gameState.myId);
-        const snowball = new Snowball(player.posAtTime(this.gameState.lastT), player.freshSnowballId(), this.gameState.myId, this.gameState.lastT);
+        const snowball = new Snowball(player.posAtTime(this.gameState.lastT), this.gameState.freshId(), this.gameState.myId, this.gameState.lastT);
         snowball.setSpeed(this.gameState.lastT, direction.scaleToLength(snowballSpeed));
         this.publish(snowball.toJson());
     }
@@ -686,6 +799,13 @@ class Events {
         return this.playerPeers.values().next().value.gameConnections;
     }
     processEvent(sourceId, e) {
+        if (Array.isArray(e)) {
+            for (const x of e) this.processOneEvent(sourceId, x);
+        } else {
+            this.processOneEvent(sourceId, e);
+        }
+    }
+    processOneEvent(sourceId, e) {
         const timeSeniority = sourceId === this.gameState.myId ? 0 : this.playerPeers.get(sourceId).timeSeniority;
         const player = this.gameState.players.get(sourceId);
         switch (e.type) {
@@ -701,6 +821,24 @@ class Events {
                     player.tool = e.tool;
                     window.uiEventsHandler.tools[player.tool].activateFor(sourceId);
                 }
+                player.leftTongAngle = e.leftTongAngle ?? player.leftTongAngle;
+                player.rightTongAngle = e.rightTongAngle ?? player.rightTongAngle;
+                player.tongsRadius = e.tongsRadius ?? player.tongsRadius;
+                if (e.maxTongAngle !== undefined) {
+                    player.maxTongAngle = e.maxTongAngle;
+                    player.leftTongAngle = e.maxTongAngle;
+                    player.rightTongAngle = e.maxTongAngle;
+                }
+                if (e.leftTongAngle !== undefined || e.rightTongAngle !== undefined || e.tongsRadius !== undefined || e.maxTongAngle !== undefined) {
+                    window.uiEventsHandler.tools[player.tool].positionFor(sourceId);
+                }
+                if (e.draggee !== undefined) player.draggee = this.gameState.objects.get(e.draggee);
+                if (e.relDraggeePos !== undefined) player.relDraggeePos = e.relDraggeePos;
+                break;
+            case "rect":
+            case "line":
+            case "circle":
+                this.gameState.update(e);
                 break;
             case "snowball":
                 const snowball = Snowball.fromJson(e);
@@ -808,14 +946,14 @@ class GameConnections {
         });
     }
 
-    connectToNewPeer(peerId) {
+    connectToNewPeer(peerId, requestDump) {
         log.connection("Initiating connection to " + peerId);
         const dataConn = this.peer.connect(peerId, { 
-            reliable: false,
+            reliable: true,
             metadata: { type: "player" }
         });
         const pp = new PlayerPeer(peerId, this.gameState, this);
-        pp.setDataConn(dataConn);
+        pp.setDataConn(dataConn, requestDump);
         if (this.mediaStream) {
             pp.setMediaConn(this.peer.call(peerId, this.mediaStream));
         }
@@ -995,9 +1133,13 @@ function init() {
             console.log("Error obtaining video:", err);
         }).then(() => {
             if (urlParams.has("friendId")) {
-                gco.connectToNewPeer(urlParams.get("friendId"));
+                gco.connectToNewPeer(urlParams.get("friendId"), true);
             }
         });
+    }
+
+    if (!urlParams.has("friendId")) {
+        new Mill(new Point(-16, 5), gs).init();
     }
 
     let handle = window.requestAnimationFrame(paint);

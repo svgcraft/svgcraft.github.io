@@ -4,6 +4,7 @@ class Tool {
     constructor(gameState) {
         this.gameState = gameState;
     }
+    static iconColor = "#E75A70";
     // can be dynamically computed depending on player position
     get enabled() {
         return false;
@@ -53,6 +54,7 @@ class Tool {
     end_drag(e) {
         throw "should be implemented by subclass";
     }
+    click(e) {}
     keydown(e) {
         if (e.key === "b") {
             I("arena").classList.toggle("hideViewBounds");
@@ -84,21 +86,18 @@ class NavigationTool extends Tool {
     get enabled() {
         return true;
     }
-    get playerDistToMouse() {
-        return 0;
-    }
     get iconSvg() {
         return svg("g", { transform: `scale(${1/70}) translate(-15, -15)`}, [
             svg("path", {
                 "d": "M 6 15 L 24 15",
-                "stroke": "#E75A70",
+                "stroke": Tool.iconColor,
                 "stroke-width": 3,
                 "marker-start": "url(#red_arrowhead)",
                 "marker-end": "url(#red_arrowhead)"
             }),
             svg("path", {
                 "d": "M 15 6 L 15 24",
-                "stroke": "#E75A70",
+                "stroke": Tool.iconColor,
                 "stroke-width": 3,
                 "marker-start": "url(#red_arrowhead)",
                 "marker-end": "url(#red_arrowhead)"
@@ -154,8 +153,8 @@ class SnowballTool extends NavigationTool {
             fill: player.color,
             class: "pointer"
         });
+        I("players").appendChild(pointerTriangle);
         if (playerId === this.gameState.myId) {
-            pointerTriangle.style.cursor = "none";
             // create small disk on which mouse pointer is not shown
             const noCursor = svg("circle", {
                 id: "noCursor",
@@ -167,9 +166,8 @@ class SnowballTool extends NavigationTool {
                 "class": "pointer"
             }, []);
             noCursor.style.cursor = "none";
-            I("arena").appendChild(noCursor);
+            I("players").appendChild(noCursor);
         }
-        I("arena").appendChild(pointerTriangle);        
     }
     positionFor(playerId) {
         const player = this.gameState.players.get(playerId);
@@ -192,6 +190,156 @@ class SnowballTool extends NavigationTool {
         } else {
             super.keydown(e);
         }
+    }
+}
+
+class TongsTool extends NavigationTool {
+    constructor(gameState) {
+        super(gameState);
+    }
+    static minTongAngle = Math.PI / 360;
+    static tongsBaseWidth = 0.4;
+    get playerDistToMouse() {
+        const maxDraggeeRadius = Math.tan(this.gameState.myPlayer.maxTongAngle) * this.gameState.myPlayer.tongsRadius;
+        const maxDraggeeDist = this.gameState.myPlayer.tongsRadius / Math.cos(this.gameState.myPlayer.maxTongAngle);
+        return maxDraggeeDist - maxDraggeeRadius;
+    }
+    get iconSvg() {
+        return svg("polyline", {
+            points: "-0.125,-0.125 0.125,0 -0.125,0.125",
+            fill: "none",
+            "stroke": Tool.iconColor,
+            "stroke-width": 0.04
+        });
+    }
+    activateFor(playerId) {
+        const player = this.gameState.players.get(playerId);
+        const leftTongTriangle = svg("path", {
+            id: "leftTongTriangle_" + playerId,
+            fill: player.color
+        });
+        I("players").appendChild(leftTongTriangle);
+        const rightTongTriangle = svg("path", {
+            id: "rightTongTriangle_" + playerId,
+            fill: player.color
+        });
+        I("players").appendChild(rightTongTriangle);
+        if (playerId === this.gameState.myId) {
+            // create small disk on which mouse pointer is not shown,
+            // move it around with tip of left tong, no need for one on
+            // the right because only relevant when both tips are at the same pos (closed tongs)
+            const leftNoCursor = svg("circle", {
+                id: "leftNoCursor",
+                r: cursorRadius,
+                "fill": "white",
+                "fill-opacity": 0,
+            });
+            leftNoCursor.style.cursor = "none";
+            I("players").appendChild(leftNoCursor);
+        }
+        this.positionFor(playerId);
+    }
+    positionFor(playerId) {
+        const player = this.gameState.players.get(playerId);
+        const leftTip = player.currentPos.add(Point.polar(player.tongsRadius, player.pointerAngle + player.leftTongAngle));
+        const leftBase = player.currentPos.add(Point.polar(TongsTool.tongsBaseWidth, player.pointerAngle + player.leftTongAngle + Math.PI / 2));
+        I("leftTongTriangle_" + playerId).setAttribute("d", pathStr(["M", player.currentPos, "L", leftTip, "L", leftBase, "z"]));
+        const rightTip = player.currentPos.add(Point.polar(player.tongsRadius, player.pointerAngle - player.rightTongAngle));
+        const rightBase = player.currentPos.add(Point.polar(TongsTool.tongsBaseWidth, player.pointerAngle - player.leftTongAngle - Math.PI / 2));
+        I("rightTongTriangle_" + playerId).setAttribute("d", pathStr(["M", player.currentPos, "L", rightTip, "L", rightBase, "z"]));
+        if (playerId === this.gameState.myId) {
+            positionCircle(I("leftNoCursor"), leftTip);
+        }
+    }
+    deactivateFor(playerId) {
+        I("leftTongTriangle_" + playerId).remove();
+        I("rightTongTriangle_" + playerId).remove();
+        if (playerId === this.gameState.myId) {
+            I("leftNoCursor").remove();
+        }
+    }
+    pointerdown(e) {
+        this.grab(this.gameState.objects.get(e.target.parentNode.id)); // circle is in a g
+        super.pointerdown(e);
+    }
+    grab(o) {
+        // default: don't grab o, just close tongs into the empty
+        let m = { type: "upd", leftTongAngle: TongsTool.minTongAngle, rightTongAngle: TongsTool.minTongAngle };
+        if (o?.type === "circle") {
+            const draggeeRadius = this.gameState.absLengthIn(o.r, o.id);
+            const toDraggee = this.gameState.absCoords(o).sub(this.gameState.myPlayer.currentPos);
+            const draggeeDist = toDraggee.norm();
+            const halfRadialDraggeeWidth = Math.asin(draggeeRadius / draggeeDist);
+            const leftTangentAngle = toDraggee.angle() + halfRadialDraggeeWidth;
+            const rightTangentAngle = toDraggee.angle() - halfRadialDraggeeWidth;
+            if (draggeeDist >= headRadius + draggeeRadius &&
+                normalizeAngle(this.gameState.myPlayer.pointerAngle + this.gameState.myPlayer.leftTongAngle - leftTangentAngle) >= 0 &&
+                normalizeAngle(rightTangentAngle - (this.gameState.myPlayer.pointerAngle - this.gameState.myPlayer.rightTongAngle)) >= 0) {
+                // grab o
+                m = { 
+                    type: "upd", 
+                    leftTongAngle: normalizeAngle(leftTangentAngle - this.gameState.myPlayer.pointerAngle),
+                    rightTongAngle: normalizeAngle(this.gameState.myPlayer.pointerAngle - rightTangentAngle),
+                    draggee: o.id,
+                    relDraggeePos: this.gameState.absCoords(o).sub(this.gameState.myPlayer.posAtTime(this.gameState.lastT))
+                };
+            }
+        }
+        this.gameState.events.publish(m);
+    }
+    ungrab() {
+        this.gameState.events.publish({ 
+            type: "upd", 
+            draggee: null, 
+            leftTongAngle: this.gameState.myPlayer.maxTongAngle,
+            rightTongAngle: this.gameState.myPlayer.maxTongAngle
+        });
+    }
+    click(e) {
+        this.ungrab();
+    }
+    end_drag(e) {
+        this.ungrab();
+        super.end_drag(e);
+    }
+    moveObjWithoutChangingPointerAngle(e) {
+        const mouse = this.gameState.eventToWorldCoords(e);
+        const targetZero = mouse.sub(Point.polar(this.playerDistToMouse, this.gameState.myPlayer.pointerAngle));
+        const current = this.gameState.myPlayer.posAtTime(this.gameState.lastT);
+        const move = targetZero.sub(current);
+        const tToStop = Math.sqrt(2 * move.norm() / this.gameState.myPlayer.decceleration);
+        this.gameState.events.publish({
+            type: "trajectory",
+            x0: targetZero.x,
+            y0: targetZero.y,
+            t0: this.gameState.lastT + tToStop
+        });
+    }
+    move_impl(e) {
+        if (this.gameState.myPlayer.draggee) {
+            this.moveObjWithoutChangingPointerAngle(e);
+        } else {
+            super.move_impl(e);
+        }
+    }
+    keydown(e) {
+        if (!this.gameState.myPlayer.draggee) {
+            switch (e.key) {
+            case "d":
+                this.gameState.events.publish({ type: "upd", tongsRadius: this.gameState.myPlayer.tongsRadius * 1.1 });
+                break;
+            case "a":
+                this.gameState.events.publish({ type: "upd", tongsRadius: this.gameState.myPlayer.tongsRadius / 1.1 });
+                break;
+            case "w":
+                this.gameState.events.publish({ type: "upd", maxTongAngle: this.gameState.myPlayer.maxTongAngle * 1.1 });
+                break;
+            case "s":
+                this.gameState.events.publish({ type: "upd", maxTongAngle: this.gameState.myPlayer.maxTongAngle / 1.1 });
+                break;
+            }
+        }
+        super.keydown(e);
     }
 }
 
@@ -414,6 +562,7 @@ class UiEvents {
         this.tools = {
             navigation: new NavigationTool(gameState),
             snowball: new SnowballTool(gameState),
+            tongs: new TongsTool(gameState),
             pointing: new PointingTool(gameState),
             rectangle: new ShapeTool(gameState),
             triangle: new ShapeTool(gameState),
@@ -497,6 +646,7 @@ class UiEvents {
         switch (this.draggee) {
         case "tool":
             if (this.pointerState === "DRAGGING") this.tools[this.gameState.myPlayer.tool].end_drag(e);
+            if (this.pointerState === "DOWN") this.tools[this.gameState.myPlayer.tool].click(e);
             break;
         case "handle":
             this.gameState.events.publish({
@@ -527,17 +677,15 @@ class UiEvents {
                 this.hideTools();
             };
             g.style.cursor = "pointer";
-            I("arena").appendChild(g);
+            I("players").appendChild(g);
             toolAngle += toolDistAngle;
         }
-        I("video_" + this.gameState.myId).style.cursor = "default";
     }
     hideTools() {
         for (const toolname of Object.keys(this.tools)) {
             const d = I(toolname + '-tool');
             if (d) d.remove();
         }
-        I("video_" + this.gameState.myId).style.cursor = "none";
     }
     contextmenu(e) {
         if (this.gameState.myPlayer.tool === "toolSelection") {
