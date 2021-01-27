@@ -3,6 +3,7 @@
 class Tool {
     constructor(gameState) {
         this.gameState = gameState;
+        this.isPointerAngleFixed = false;
     }
     static iconColor = "#E75A70";
     // can be dynamically computed depending on player position
@@ -29,6 +30,13 @@ class Tool {
         throw "should be implemented by subclass";
     }
     hover(e) {
+        if (this.isPointerAngleFixed) {
+            this.hoverWithFixedPointerAngle(e);
+        } else {
+            this.hoverWithFlexiblePointerAngle(e);
+        }
+    }
+    hoverWithFlexiblePointerAngle(e) {
         const mouse = this.gameState.eventToWorldCoords(e);
         const current = this.gameState.myPlayer.posAtTime(this.gameState.lastT);
         const d = current.sub(mouse);
@@ -43,6 +51,19 @@ class Tool {
             angle: d.angle(),
             // when bouncing on a wall, angle changes, while pointerAngle remains
             pointerAngle: oppositeAngle(d.angle())
+        });
+    }
+    hoverWithFixedPointerAngle(e) {
+        const mouse = this.gameState.eventToWorldCoords(e);
+        const targetZero = mouse.sub(Point.polar(this.playerDistToMouse, this.gameState.myPlayer.pointerAngle));
+        const current = this.gameState.myPlayer.posAtTime(this.gameState.lastT);
+        const move = targetZero.sub(current);
+        const tToStop = Math.sqrt(2 * move.norm() / this.gameState.myPlayer.decceleration);
+        this.gameState.events.publish({
+            type: "trajectory",
+            x0: targetZero.x,
+            y0: targetZero.y,
+            t0: this.gameState.lastT + tToStop
         });
     }
     first_drag(e) {
@@ -153,6 +174,7 @@ class SnowballTool extends NavigationTool {
             fill: player.color,
             class: "pointer"
         });
+        pointerTriangle.style.pointerEvents = "none";
         I("players").appendChild(pointerTriangle);
         if (playerId === this.gameState.myId) {
             // create small disk on which mouse pointer is not shown
@@ -186,6 +208,7 @@ class SnowballTool extends NavigationTool {
     }
     keydown(e) {
         if (e.key === "f") {
+            if (e.repeat) return;
             this.gameState.events.publishSnowball(Point.polar(1, this.gameState.myPlayer.pointerAngle));
         } else {
             super.keydown(e);
@@ -197,9 +220,12 @@ class TongsTool extends NavigationTool {
     constructor(gameState) {
         super(gameState);
     }
-    static minTongAngle = Math.PI / 360;
+    static minTongAngle = 0;
     static tongsBaseWidth = 0.4;
     get playerDistToMouse() {
+        if (this.isPointerAngleFixed && !this.gameState.myPlayer.draggee) {
+            return this.gameState.myPlayer.tongsRadius;
+        }
         const maxDraggeeRadius = Math.tan(this.gameState.myPlayer.maxTongAngle) * this.gameState.myPlayer.tongsRadius;
         const maxDraggeeDist = this.gameState.myPlayer.tongsRadius / Math.cos(this.gameState.myPlayer.maxTongAngle);
         return maxDraggeeDist - maxDraggeeRadius;
@@ -218,11 +244,13 @@ class TongsTool extends NavigationTool {
             id: "leftTongTriangle_" + playerId,
             fill: player.color
         });
+        leftTongTriangle.style.pointerEvents = "none";
         I("players").appendChild(leftTongTriangle);
         const rightTongTriangle = svg("path", {
             id: "rightTongTriangle_" + playerId,
             fill: player.color
         });
+        rightTongTriangle.style.pointerEvents = "none";
         I("players").appendChild(rightTongTriangle);
         if (playerId === this.gameState.myId) {
             // create small disk on which mouse pointer is not shown,
@@ -258,16 +286,13 @@ class TongsTool extends NavigationTool {
             I("leftNoCursor").remove();
         }
     }
-    pointerdown(e) {
-        this.grab(this.gameState.objects.get(e.target.parentNode.id)); // circle is in a g
-        super.pointerdown(e);
-    }
     grab(o) {
         // default: don't grab o, just close tongs into the empty
         let m = { type: "upd", leftTongAngle: TongsTool.minTongAngle, rightTongAngle: TongsTool.minTongAngle };
-        if (o?.type === "circle") {
-            const draggeeRadius = this.gameState.absLengthIn(o.r, o.id);
-            const toDraggee = this.gameState.absCoords(o).sub(this.gameState.myPlayer.currentPos);
+        if (o?.type === "circle" || o instanceof Player) {
+            const draggeeRadius = o instanceof Player ? headRadius : this.gameState.absLengthIn(o.r, o.id);
+            const oPos = o instanceof Player ? o.currentPos : this.gameState.absCoords(o);
+            const toDraggee = oPos.sub(this.gameState.myPlayer.currentPos);
             const draggeeDist = toDraggee.norm();
             const halfRadialDraggeeWidth = Math.asin(draggeeRadius / draggeeDist);
             const leftTangentAngle = toDraggee.angle() + halfRadialDraggeeWidth;
@@ -281,7 +306,7 @@ class TongsTool extends NavigationTool {
                     leftTongAngle: normalizeAngle(leftTangentAngle - this.gameState.myPlayer.pointerAngle),
                     rightTongAngle: normalizeAngle(this.gameState.myPlayer.pointerAngle - rightTangentAngle),
                     draggee: o.id,
-                    relDraggeePos: this.gameState.absCoords(o).sub(this.gameState.myPlayer.posAtTime(this.gameState.lastT))
+                    relDraggeePos: oPos.sub(this.gameState.myPlayer.posAtTime(this.gameState.lastT))
                 };
             }
         }
@@ -296,31 +321,16 @@ class TongsTool extends NavigationTool {
         });
     }
     click(e) {
-        this.ungrab();
-    }
-    end_drag(e) {
-        this.ungrab();
-        super.end_drag(e);
-    }
-    moveObjWithoutChangingPointerAngle(e) {
-        const mouse = this.gameState.eventToWorldCoords(e);
-        const targetZero = mouse.sub(Point.polar(this.playerDistToMouse, this.gameState.myPlayer.pointerAngle));
-        const current = this.gameState.myPlayer.posAtTime(this.gameState.lastT);
-        const move = targetZero.sub(current);
-        const tToStop = Math.sqrt(2 * move.norm() / this.gameState.myPlayer.decceleration);
-        this.gameState.events.publish({
-            type: "trajectory",
-            x0: targetZero.x,
-            y0: targetZero.y,
-            t0: this.gameState.lastT + tToStop
-        });
-    }
-    move_impl(e) {
-        if (this.gameState.myPlayer.draggee) {
-            this.moveObjWithoutChangingPointerAngle(e);
+        if (this.isPointerAngleFixed) {
+            this.ungrab();
         } else {
-            super.move_impl(e);
+            if (e.target.id.startsWith("circ_")) {
+                this.grab(this.gameState.players.get(e.target.id.substr(5)));
+            } else {
+                this.grab(this.gameState.objects.get(e.target.parentNode.id)); // circle is in a g
+            }
         }
+        this.isPointerAngleFixed = !this.isPointerAngleFixed;
     }
     keydown(e) {
         if (!this.gameState.myPlayer.draggee) {
@@ -660,7 +670,6 @@ class UiEvents {
         set_corner_handle_cursor("move");
     }
     keydown(e) {
-        if (e.repeat) return;
         this.tools[this.gameState.myPlayer.tool].keydown(e);
     }
     showTools() {
